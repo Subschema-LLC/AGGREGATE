@@ -37,10 +37,16 @@ ROOT_FILES = (
 CONFIG_FILES = (
     "aggregate.yaml.example", "websites.yaml.example", "website-scopes.yaml.example", "permission-groups.yaml.example",
     "bundles.php", "preload.php",
-    "services.yaml", "services_dashboard.yaml", "routes_dashboard.yaml",
+    "services.yaml", "wiring.yaml", "services_dashboard.yaml", "routes_dashboard.yaml",
     "routes_health.yaml", "routes_branding.yaml", "routes_collection.yaml", "routes_admin_api.yaml",
     "navigation.yaml", "goals.yaml", "quick_search.yaml", "maintenance.php", "setup.php",
     "release.yaml", "release-signing.pub",
+)
+# Tracked files directly in config/ that packages deliberately leave out. Every
+# other such file must be in CONFIG_FILES or be operator-owned (a release test
+# checks), so a newly added file cannot be dropped from a package unnoticed.
+UNPACKAGED_CONFIG_FILES = (
+    "reference.php",  # Symfony's generated config reference for IDEs; never loaded at runtime.
 )
 # Operator-owned paths that a package must never contain, so extracting or
 # applying a release can never replace them. Keep this list identical to
@@ -72,7 +78,7 @@ REQUIRED_FILES = (
     "public/consent.js", "public/consent.min.js", "public/consent.css", "public/tag-manager.js", "public/tag-manager.min.js",
     "var/browser/consent.template.min.js", "var/browser/consent-manifest.json",
     "var/browser/tag-manager.template.min.js", "var/browser/tag-manager-manifest.json",
-    "config/aggregate.yaml.example", "config/websites.yaml.example", "config/services.yaml",
+    "config/aggregate.yaml.example", "config/websites.yaml.example", "config/services.yaml", "config/wiring.yaml",
     "config/bundles.php", "config/quick_search.yaml", "config/maintenance.php", "config/setup.php",
     "src/Setup/FirstRunSetup.php", "src/Setup/SetupPage.php", "src/Setup/SetupCode.php", "src/Kernel.php", "importmap.php",
     "var/browser/standalone-consent.template.min.js", "var/browser/standalone-consent-manifest.json",
