@@ -18,6 +18,13 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+  # The documentation site's build tools (VitePress), separate from the tracker.
+  - package-ecosystem: npm
+    directory: /website
+    target-branch: development
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
   - package-ecosystem: github-actions
     directory: /
     target-branch: development

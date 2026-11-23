@@ -320,6 +320,12 @@ npm run dev     # live preview at http://localhost:5173/aggregate/
 npm run build   # the same strict build CI runs
 ```
 
+VitePress 1.6 depends on Vite 5, which has no releases fixing several of Vite's
+dev-server advisories, so `website/package.json` overrides Vite with a fixed 6.4
+release. Remove the override when moving to a VitePress release that requires
+Vite 6 or newer. The preview listens only on `localhost`; avoid `--host` unless
+you need it on another device.
+
 The [documentation workflow](.github/workflows/docs.yml) builds the site on pull
 requests that change documentation and publishes it to GitHub Pages from `master`,
 so the site describes the current release.

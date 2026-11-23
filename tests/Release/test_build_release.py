@@ -121,7 +121,7 @@ class ReleaseBuildTest(unittest.TestCase):
         package, _ = self.build()
         with zipfile.ZipFile(package) as archive:
             names = set(archive.namelist())
-            for relative in ("config/quick_search.yaml", "config/maintenance.php", "config/setup.php", "config/goals.yaml", "config/navigation.yaml"):
+            for relative in ("config/services.yaml", "config/wiring.yaml", "config/quick_search.yaml", "config/maintenance.php", "config/setup.php", "config/goals.yaml", "config/navigation.yaml"):
                 self.assertIn(relative, names)
             self.assertNotIn("config/goals.local.yaml", names)
             inventory = json.loads(archive.read("release-files.json"))
@@ -130,6 +130,21 @@ class ReleaseBuildTest(unittest.TestCase):
             self.assertEqual(names - {"release-files.json"}, set(inventory["files"]))
             for name, digest in inventory["files"].items():
                 self.assertEqual(hashlib.sha256(archive.read(name)).hexdigest(), digest, name)
+
+    def test_every_repository_config_file_is_packaged_or_deliberately_left_out(self):
+        # services.yaml and the kernel import config/ files by name, and a file
+        # left out of the package only fails when the extracted package boots.
+        config = SCRIPT.parents[1] / "config"
+        for path in sorted(path for path in config.iterdir() if path.is_file()):
+            relative = "config/" + path.name
+            if BUILDER.is_protected(relative):
+                continue
+            with self.subTest(path=relative):
+                self.assertTrue(
+                    path.name in BUILDER.CONFIG_FILES or path.name in BUILDER.UNPACKAGED_CONFIG_FILES,
+                    f"Add {path.name} to CONFIG_FILES in scripts/build-release.py, or to UNPACKAGED_CONFIG_FILES if packages must not ship it.",
+                )
+        self.assertFalse(set(BUILDER.CONFIG_FILES) & set(BUILDER.UNPACKAGED_CONFIG_FILES))
 
     def test_refuses_operator_paths_in_packaged_trees(self):
         for relative in ("var/browser/aggregate.template.min.js", "config/services.yaml"):
