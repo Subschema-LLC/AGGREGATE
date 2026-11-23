@@ -307,6 +307,8 @@ No behavior change.
 - [x] A Twig check for zone views: no entity names, no rendering another
   feature's view or a page template, no inline CSS or JS (rules 13 and 14).
 - [x] A casing check for zone folders and colocated files (rule 17).
+- [x] The shared FIDES rules in a managed block in AGENTS.md, kept in step
+  with FIDES releases by the FIDES rules sync workflow.
 - [ ] A stricter PHPStan level for the zones than for older code (rule 18).
 
 ### Phase 1: Alerts as the pilot
