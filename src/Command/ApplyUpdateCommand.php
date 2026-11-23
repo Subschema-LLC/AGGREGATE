@@ -30,7 +30,7 @@ final class ApplyUpdateCommand extends Command
     protected function configure(): void
     {
         $this
-            ->addOption('release', null, InputOption::VALUE_REQUIRED, 'Release installations: install this version (YYYY.MM.NN) instead of the latest')
+            ->addOption('release', null, InputOption::VALUE_REQUIRED, 'Release installations: install this version (YYYY.MM.NN or YYYY.MM.NN.H) instead of the latest')
             ->addOption('package', null, InputOption::VALUE_REQUIRED, 'Release installations: a downloaded aggregate-YYYY.MM.NN.zip to install instead of downloading')
             ->addOption('manifest', null, InputOption::VALUE_REQUIRED, 'With --package: the downloaded aggregate-release.json')
             ->addOption('signature', null, InputOption::VALUE_REQUIRED, 'With --package: the downloaded aggregate-release.json.sig')

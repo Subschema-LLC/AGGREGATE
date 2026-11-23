@@ -1,20 +1,30 @@
-name: Build release package
+name: Publish release
 
+# Run from the Actions tab on the publishing branch (config/release.yaml, normally
+# master). The run chooses the next version, then builds, tests, signs and verifies
+# the package from the branch's newest commit. Only then does it tag that commit
+# and publish the release, so a failed run leaves no tag or release behind and can
+# simply be run again.
 on:
-  push:
-    tags: ['v[0-9]*']
   workflow_dispatch:
     inputs:
-      tag:
-        description: 'Existing release tag to package, vYYYY.MM.NN (for example v2026.09.01)'
-        required: true
-        type: string
+      kind:
+        description: 'release: the next vYYYY.MM.NN for this UTC month. hotfix: the next vYYYY.MM.NN.H of the latest release.'
+        type: choice
+        options: [release, hotfix]
+        default: release
+      label:
+        description: 'Shown before the version in the release title, for example "Beta v2026.11.05"'
+        type: choice
+        options: [Beta, none]
+        default: Beta
 
 permissions:
   contents: read
 
+# One release at a time, so two runs never choose the same version.
 concurrency:
-  group: release-${{ inputs.tag || github.ref }}
+  group: release
   cancel-in-progress: false
 
 jobs:
@@ -25,12 +35,11 @@ jobs:
       tag: ${{ steps.release.outputs.tag }}
       branch: ${{ steps.release.outputs.branch }}
       commit: ${{ steps.release.outputs.commit }}
-    env:
-      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
     steps:
+      # The commit the run started from, even if the branch moves during the run.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ inputs.tag || github.ref_name }}
+          ref: ${{ github.sha }}
           fetch-depth: 0
           persist-credentials: false
       - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
@@ -60,21 +69,36 @@ jobs:
         run: |
           composer audit --locked --no-plugins --no-interaction
           npm audit
-      - name: Verify release tag and publishing branch
+      - name: Choose the release version
         id: release
         shell: bash
+        env:
+          RELEASE_KIND: ${{ inputs.kind }}
         run: |
           set -euo pipefail
-          # vYYYY.MM.NN: NN numbers that month's releases from 01; it is not the day.
-          python3 scripts/release-version.py check "$RELEASE_TAG" > /dev/null
           branch="$(php scripts/release-branch.php)"
+          if [ "$GITHUB_REF" != "refs/heads/$branch" ]; then
+            echo "::error title=Wrong branch::Run this workflow on the publishing branch $branch (config/release.yaml), not $GITHUB_REF_NAME."
+            exit 1
+          fi
           commit="$(git rev-parse HEAD)"
-          tagged_commit="$(git rev-parse "refs/tags/$RELEASE_TAG^{commit}")"
-          test "$commit" = "$tagged_commit"
-          git merge-base --is-ancestor "$commit" "refs/remotes/origin/$branch" || { echo "Release tag must belong to publishing branch $branch." >&2; exit 1; }
-          echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
-          echo "branch=$branch" >> "$GITHUB_OUTPUT"
-          echo "commit=$commit" >> "$GITHUB_OUTPUT"
+          test "$commit" = "$GITHUB_SHA"
+          released="$(git tag --points-at "$commit" --list 'v*' | paste -sd ' ' -)"
+          if [ -n "$released" ]; then
+            echo "::error title=Already released::$commit is already tagged $released. Promote new changes to $branch first."
+            exit 1
+          fi
+          # vYYYY.MM.NN: NN numbers that month's releases from 01; it is not the day.
+          # vYYYY.MM.NN.H: H numbers hotfixes to the latest release from 1.
+          case "$RELEASE_KIND" in
+            release) tag="$(python3 scripts/release-version.py next)" ;;
+            hotfix) tag="$(python3 scripts/release-version.py next --hotfix)" ;;
+            *) echo "::error::Unknown release kind: $RELEASE_KIND"; exit 1 ;;
+          esac
+          python3 scripts/release-version.py check "$tag" > /dev/null
+          echo "RELEASE_TAG=$tag" >> "$GITHUB_ENV"
+          printf 'tag=%s\nbranch=%s\ncommit=%s\n' "$tag" "$branch" "$commit" >> "$GITHUB_OUTPUT"
+          echo "Building $tag ($RELEASE_KIND) from $branch at $commit." >> "$GITHUB_STEP_SUMMARY"
       - name: Test application and release tooling
         run: |
           php bin/phpunit
@@ -228,7 +252,7 @@ jobs:
           PHP
           php bin/console app:updates:verify-package "$package" "$manifest" "$signature"
 
-  draft-release:
+  publish:
     needs: [build, verify]
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -239,39 +263,56 @@ jobs:
         with:
           name: signed-release-package
           path: release
-      - name: Attach the package to the release, or create a draft for review
+      - name: Tag the verified commit and publish the release
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           RELEASE_TAG: ${{ needs.build.outputs.tag }}
+          RELEASE_COMMIT: ${{ needs.build.outputs.commit }}
+          RELEASE_LABEL: ${{ inputs.label }}
         shell: bash
         run: |
           set -euo pipefail
           assets=(release/aggregate-*.zip release/aggregate-release.json release/aggregate-release.json.sig)
-          # A maintainer may have created the release in GitHub's release form,
-          # which also creates the tag that started this workflow. Attach the
-          # package to that release: a second release with the same tag could
-          # never be published.
-          matches=$(gh api "repos/$GH_REPO/releases?per_page=100" --paginate \
-            --jq '.[] | select(.tag_name == env.RELEASE_TAG) | "\(.id) \(.assets | length) \(.draft)"')
-          count=$(printf '%s\n' "$matches" | grep -c . || true)
-          if [ "$count" -eq 0 ]; then
-            gh release create "$RELEASE_TAG" --verify-tag --draft --title "Aggregate $RELEASE_TAG" --generate-notes "${assets[@]}"
-            echo "Created a draft release for $RELEASE_TAG with the package. Review and publish it." >> "$GITHUB_STEP_SUMMARY"
-          elif [ "$count" -eq 1 ]; then
-            read -r id attached draft <<< "$matches"
-            # Never replace assets on an existing release; tags and packages are immutable.
-            if [ "$attached" -ne 0 ]; then
-              echo "::error title=Release $RELEASE_TAG::The release already has $attached attached files. Packages are never replaced; tag a new version instead."
-              exit 1
-            fi
-            gh release upload "$RELEASE_TAG" "${assets[@]}"
-            if [ "$draft" = "true" ]; then
-              echo "Attached the package to the draft release $RELEASE_TAG (id $id). Review and publish it." >> "$GITHUB_STEP_SUMMARY"
-            else
-              echo "Attached the package to the published release $RELEASE_TAG (id $id); installations can update to it now." >> "$GITHUB_STEP_SUMMARY"
-            fi
-          else
-            echo "::error title=Release $RELEASE_TAG::$count releases use the tag $RELEASE_TAG. Delete the extra ones on GitHub (deleting a release keeps its tag), then run this workflow again for the tag."
+          title="$RELEASE_TAG"
+          if [ "$RELEASE_LABEL" = Beta ]; then
+            title="Beta $RELEASE_TAG"
+          fi
+
+          # The tag is created only now, after the package was built, signed and
+          # verified. A rerun of this job may find the tag it created; any other
+          # tag of that name stops the release.
+          existing="$(gh api "repos/$GH_REPO/git/matching-refs/tags/$RELEASE_TAG" \
+            --jq '.[] | select(.ref == "refs/tags/" + env.RELEASE_TAG) | .object.sha')"
+          if [ -z "$existing" ]; then
+            gh api "repos/$GH_REPO/git/refs" -f ref="refs/tags/$RELEASE_TAG" -f sha="$RELEASE_COMMIT" > /dev/null
+          elif [ "$existing" != "$RELEASE_COMMIT" ]; then
+            echo "::error title=Tag $RELEASE_TAG exists::It points to $existing, not $RELEASE_COMMIT. Run the workflow again to choose the next version."
             exit 1
           fi
+
+          # Attach all three files to a draft first and publish it after, so an
+          # installation never sees the release with only some of its files.
+          find_release() {
+            gh api "repos/$GH_REPO/releases?per_page=100" --paginate \
+              --jq '.[] | select(.tag_name == env.RELEASE_TAG) | "\(.id) \(.draft) \(.assets | length)"'
+          }
+          release="$(find_release)"
+          if [ -z "$release" ]; then
+            gh release create "$RELEASE_TAG" --verify-tag --draft --title "$title" --generate-notes "${assets[@]}"
+            release="$(find_release)"
+          fi
+          count="$(printf '%s\n' "$release" | grep -c . || true)"
+          if [ "$count" -ne 1 ]; then
+            echo "::error title=Release $RELEASE_TAG::Found $count releases for $RELEASE_TAG, not one. Delete any extra ones on GitHub (the tag stays), then rerun this job."
+            exit 1
+          fi
+          read -r id draft attached <<< "$release"
+          if [ "$attached" -ne 3 ]; then
+            echo "::error title=Release $RELEASE_TAG::The release has $attached of its 3 files. Delete the release on GitHub (the tag stays), then rerun this job."
+            exit 1
+          fi
+          if [ "$draft" = true ]; then
+            gh api -X PATCH "repos/$GH_REPO/releases/$id" -F draft=false > /dev/null
+          fi
+          echo "Published $title with its package. Installations can update to it now." >> "$GITHUB_STEP_SUMMARY"
