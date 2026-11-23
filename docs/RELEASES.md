@@ -22,7 +22,7 @@ Maintainers select the publishing branch in the tracked `config/release.yaml`:
 branch: master
 ```
 
-The workflow verifies that the stable release tag points to a commit on that branch. Keep this separate from each customer's installed configuration. ZIP update checks use the manifest's explicit branch, since GitHub's `target_commitish` can be a branch name or a commit hash.
+The release workflow runs only on that branch and releases its newest commit. Keep this separate from each customer's installed configuration. ZIP update checks use the manifest's explicit branch, since GitHub's `target_commitish` can be a branch name or a commit hash.
 
 ## One-time maintainer setup
 
@@ -44,7 +44,7 @@ RELEASE_SIGNING_PRIVATE_KEY="$(cat "$HOME/.config/aggregate-release/private.key"
   php scripts/sign-release.php --check-key
 ```
 
-The workflow builds the tagged commit, so the tag must point to a commit that already contains `config/release-signing.pub`. After committing the key and promoting it to the publishing branch, tag that commit with the next [version](#version-numbers). If an earlier tag failed and no release was published from it, you may delete that tag and tag the new commit instead. Future key rotation needs a trust transition for existing installations; replacing a key in a downloaded package does not authorize that new key.
+The workflow builds the publishing branch's newest commit, so commit `config/release-signing.pub` and promote it to that branch before the first [release](#publish-a-release). Future key rotation needs a trust transition for existing installations; replacing a key in a downloaded package does not authorize that new key.
 
 ## Version numbers
 
@@ -54,20 +54,33 @@ the first release in September 2026 is `v2026.09.01`, the second is `v2026.09.02
 and the first in October is `v2026.10.01`. Numbering continues after the highest
 existing release for the month; a skipped number is not reused.
 
-Print the next unused tag for the current UTC month, or for a given month:
+A hotfix adds a fourth number to the latest release, starting at `1`: the first fix to
+`v2026.09.02` is `v2026.09.02.1`, the next `v2026.09.02.2`. The next regular release
+is still `v2026.09.03` (or the next month's `01`); hotfix numbers never change it.
+
+The release workflow chooses the version for you. To see what it would choose, or to
+check a tag:
 
 ```bash
-python3 scripts/release-version.py next
+python3 scripts/release-version.py next            # next release for the current UTC month
 python3 scripts/release-version.py next --month 2026.10
+python3 scripts/release-version.py next --hotfix   # next hotfix of the latest release
 python3 scripts/release-version.py check v2026.09.01
 ```
 
-The release workflow and `build-release.py` accept only this format; a tag such as
-`v2026.9.1`, `v2026.09.00` or `v1.2.3` fails before anything is built. Package
-metadata and file names drop the `v` (`2026.09.01`, `aggregate-2026.09.01.zip`).
-Installations order versions by year, month and index, so every calendar release is
-newer than an earlier `X.Y.Z` package, and installations from such packages can
-still read their own metadata and update.
+The month is the UTC month, so a release on the evening of the last day of a month in
+the Americas may already belong to the next one.
+
+The release workflow and `build-release.py` accept only these formats; a tag such as
+`v2026.9.1`, `v2026.09.00`, `v2026.09.01.0` or `v1.2.3` fails before anything is
+built. Package metadata and file names drop the `v` (`2026.09.01`,
+`aggregate-2026.09.01.1.zip`). Installations order versions by year, month, index and
+hotfix, so a hotfix is newer than its release and older than the next one, every
+calendar release is newer than an earlier `X.Y.Z` package, and installations from such
+packages can still read their own metadata and update.
+
+Installations older than hotfix numbering skip hotfix releases: they are offered the
+next regular release, and every hotfix after it.
 
 ## Publish a release
 
@@ -76,15 +89,15 @@ branches start from `development` and merge back into it through contributor PRs
 
 1. Open and merge a promotion PR from `development` to `uat`, then complete user acceptance testing. Submit any fixes through working-branch PRs to `development` and promote them to `uat` for testing too.
 2. After acceptance testing passes, open and merge a promotion PR from `uat` to `master`. Production publishing defaults to `master`; maintainers using a different publishing branch must keep `config/release.yaml` aligned with their production target.
-3. Tag the release with the next [calendar version](#version-numbers) on a commit from the configured publishing branch, in one of two ways:
-   - **Push a tag**, for example `tag=$(python3 scripts/release-version.py next) && git tag "$tag" origin/master && git push origin "$tag"`. The workflow creates a draft release with the package for you to review and publish.
-   - **Or create the release on GitHub** (**Releases → Draft a new release**), choosing a new tag and `master` as the target. Publish it, or save it as a draft. The new tag starts the workflow, which attaches the package to this release instead of creating a second one.
+3. In **Actions → Publish release → Run workflow**, choose the publishing branch and:
+   - **kind**: `release` for the next [calendar version](#version-numbers) of the current UTC month, or `hotfix` for the next hotfix of the latest release.
+   - **label**: `Beta` titles the release "Beta v2026.11.05"; `none` titles it "v2026.11.05". The label is only the title: the release is published as a stable GitHub release either way, because installations ignore prereleases.
+4. The workflow chooses the version and builds the branch's newest commit, even if the branch moves during the run. It tests PHP, JavaScript, and release tooling; prepares clean production dependencies; compiles dashboard and minified browser assets; creates and signs the ZIP; boots the extracted package; and verifies it with the application's own verifier.
+5. Only then does it tag the commit, create the release with its generated notes, attach the ZIP, manifest and signature, and publish it. Installations are offered it from then on. Edit the release notes on GitHub if you like; never replace the files.
 
-   An existing release tag can also be supplied to the workflow's manual dispatch.
-4. The **Build release package** workflow tests PHP, JavaScript, and release tooling; prepares clean production dependencies; compiles dashboard and minified browser assets; creates and signs the ZIP; boots the extracted package; and attaches the ZIP, manifest and signature to the release.
-5. After success, review and publish the release if it is still a draft. Installations offer only published, stable releases with all three files; drafts, prereleases and releases without the package are ignored. A release created on GitHub and published straight away is offered once the workflow has finished and attached the package.
+Do not create tags or releases by hand: the workflow refuses a commit that already has a release tag, and only runs on the publishing branch. Runs wait for each other, so two runs never choose the same version.
 
-The workflow never replaces a release's files: if the release for the tag already has attached files, it stops, and corrections need a new version. If two releases use the same tag (earlier versions of the workflow added a draft next to a release created on GitHub), it stops too. Delete the extra release on GitHub, which keeps the tag, and run the workflow again for that tag; or, for a release that is already published without files, download the draft's three files, attach them to the published release with **Edit**, and delete the draft.
+A failed run creates no tag or release. Fix the cause, promote the fix to the publishing branch, and run the workflow again; it chooses the same version if nothing was released in between. If only the last job fails, for example on a GitHub outage, rerun that job: it reuses the tag it created for the same commit. If it reports a release with fewer than three files, delete that release on GitHub (the tag stays) and rerun the job. The workflow never replaces a published release's files; a correction is a new release or hotfix.
 
 Each release includes:
 

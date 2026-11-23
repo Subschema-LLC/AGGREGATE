@@ -135,8 +135,16 @@ final class DatabasePlatformConfigurationTest extends TestCase
         // Code from the package runs only in the read-only verify job, never where releases are written.
         self::assertSame(['contents' => 'read'], $workflow['jobs']['verify']['permissions'] ?? null);
         self::assertStringContainsString('app:updates:verify-package', Yaml::dump($workflow['jobs']['verify'], 6));
-        self::assertStringNotContainsString('bin/console', Yaml::dump($workflow['jobs']['draft-release'], 6));
-        self::assertContains('verify', (array) $workflow['jobs']['draft-release']['needs']);
+        self::assertStringNotContainsString('bin/console', Yaml::dump($workflow['jobs']['publish'], 6));
+        self::assertContains('verify', (array) $workflow['jobs']['publish']['needs']);
+
+        // Releases start from the Actions tab, and only the last job, after the package
+        // is verified, can create the tag and the release.
+        self::assertSame(['workflow_dispatch'], array_keys($workflow['on']));
+        foreach ($workflow['jobs'] as $name => $job) {
+            self::assertSame($name === 'publish' ? ['contents' => 'write'] : ['contents' => 'read'],
+                $job['permissions'] ?? $workflow['permissions'], (string) $name);
+        }
 
         // The verify job runs package code, so it checks out nothing; and no release
         // job restores an Actions cache another run could have written.

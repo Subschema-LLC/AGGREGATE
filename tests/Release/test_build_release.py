@@ -131,6 +131,12 @@ class ReleaseBuildTest(unittest.TestCase):
             for name, digest in inventory["files"].items():
                 self.assertEqual(hashlib.sha256(archive.read(name)).hexdigest(), digest, name)
 
+    def test_hotfix_versions_name_the_package_and_its_metadata(self):
+        package, _ = self.build(version="v2026.09.01.1")
+        self.assertEqual("aggregate-2026.09.01.1.zip", Path(package).name)
+        with zipfile.ZipFile(package) as archive:
+            self.assertEqual("2026.09.01.1", json.loads(archive.read("release.json"))["version"])
+
     def test_every_repository_config_file_is_packaged_or_deliberately_left_out(self):
         # services.yaml and the kernel import config/ files by name, and a file
         # left out of the package only fails when the extracted package boots.
@@ -290,7 +296,7 @@ class ReleaseBuildTest(unittest.TestCase):
             self.build()
 
     def test_refuses_unsafe_metadata(self):
-        for values in ({"version": "../../bad"}, {"version": "1.2.3"}, {"version": "2026.09.01-beta.1"}, {"version": "2026.9.1"}, {"version": "2026.13.01"}, {"version": "2026.09.00"}, {"version": "2026.09.100"}, {"version": "1999.09.01"}, {"branch": "../bad"}, {"branch": "master\nevil"}, {"branch": "a" * 256}, {"branch": "HEAD"}, {"commit": "short"}, {"built_at": "2026-09-14T12:00:00"}):
+        for values in ({"version": "../../bad"}, {"version": "1.2.3"}, {"version": "2026.09.01-beta.1"}, {"version": "2026.9.1"}, {"version": "2026.13.01"}, {"version": "2026.09.00"}, {"version": "2026.09.100"}, {"version": "2026.09.01.0"}, {"version": "2026.09.01.01"}, {"version": "2026.09.01.1.1"}, {"version": "1999.09.01"}, {"branch": "../bad"}, {"branch": "master\nevil"}, {"branch": "a" * 256}, {"branch": "HEAD"}, {"commit": "short"}, {"built_at": "2026-09-14T12:00:00"}):
             with self.subTest(values=values), self.assertRaises(ValueError):
                 self.build(**values)
 

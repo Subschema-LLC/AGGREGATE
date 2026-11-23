@@ -45,6 +45,10 @@ final class ReleaseMetadataTest extends TestCase
         yield 'calendar month thirteen' => [['version' => '2026.13.01']];
         yield 'calendar three-digit index' => [['version' => '2026.09.100']];
         yield 'calendar prerelease' => [['version' => '2026.09.01-rc1']];
+        yield 'hotfix zero' => [['version' => '2026.09.01.0']];
+        yield 'hotfix leading zero' => [['version' => '2026.09.01.01']];
+        yield 'hotfix three digits' => [['version' => '2026.09.01.100']];
+        yield 'hotfix of a hotfix' => [['version' => '2026.09.01.1.1']];
         yield 'missing branch' => [['branch' => null]];
         yield 'invalid branch' => [['branch' => '../master']];
         yield 'invalid commit' => [['commit' => 'main']];
@@ -74,6 +78,18 @@ final class ReleaseMetadataTest extends TestCase
         $ordered = ['2026.10.01', '0.2.0', '2026.09.10', '2027.01.01', '2026.09.02'];
         usort($ordered, 'version_compare');
         self::assertSame(['0.2.0', '2026.09.02', '2026.09.10', '2026.10.01', '2027.01.01'], $ordered);
+    }
+
+    public function testHotfixVersionsParseAndSortBetweenTheirReleaseAndTheNext(): void
+    {
+        $hotfix = array_replace(self::metadata(), ['version' => '2026.09.02.1']);
+        $hotfix['package'] = ['filename' => 'aggregate-2026.09.02.1.zip', 'sha256' => str_repeat('c', 64), 'size' => 1];
+        self::assertSame('2026.09.02.1', ReleaseMetadata::parse(json_encode($hotfix, JSON_THROW_ON_ERROR), true)['version']);
+
+        self::assertTrue(ReleaseMetadata::isCalendarVersion('2026.09.02.12'));
+        $ordered = ['2026.09.03', '2026.09.02.10', '2026.09.02', '2026.09.02.2', '2026.09.02.1'];
+        usort($ordered, 'version_compare');
+        self::assertSame(['2026.09.02', '2026.09.02.1', '2026.09.02.2', '2026.09.02.10', '2026.09.03'], $ordered);
     }
 
     #[DataProvider('invalidJson')]
