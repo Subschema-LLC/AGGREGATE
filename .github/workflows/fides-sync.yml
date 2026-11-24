@@ -1,0 +1,20 @@
+# Keeps the managed FIDES block in AGENTS.md in step with FIDES releases by
+# opening a pull request against development when a release changes the rules.
+# Dependabot (github-actions) proposes new tags of the reusable workflow.
+name: FIDES rules sync
+
+on:
+  schedule:
+    - cron: '23 13 * * 1'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  sync:
+    permissions:
+      contents: write
+      pull-requests: write
+    uses: Subschema-LLC/FIDES-Software-Architecture/.github/workflows/sync-agents.yml@v0.4
+    with:
+      base: development

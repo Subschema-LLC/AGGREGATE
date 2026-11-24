@@ -1581,6 +1581,25 @@ shipped defaults need the local override files.
 **What would change it.** A trust mechanism that is at least as independent of
 the package.
 
+### Releases are tagged last, by the workflow
+
+**Decision.** A maintainer starts a release from the Actions tab on the
+publishing branch. The workflow chooses the next calendar version (or hotfix
+`.H`), builds, tests, signs and verifies the branch's newest commit, and only
+then creates the tag and publishes the release with its files.
+
+**Why.** When the tag came first, a failed build left a tag, and sometimes a
+published release without files, on a broken commit. The fix meant moving a
+published tag or skipping a version, and rerunning the workflow rebuilt the old
+commit. With the tag last, a failed run leaves nothing behind.
+
+**Trade-off.** Releases cannot be started from GitHub's release form or by
+pushing a tag, and a release always comes from the newest commit of the
+publishing branch.
+
+**What would change it.** A need to release a commit other than the branch's
+newest, such as a hotfix from a maintenance branch.
+
 ### Code deployed by another tool is reported, not installed
 
 **Decision.** A third update method, "deployed another way", is for sites that a

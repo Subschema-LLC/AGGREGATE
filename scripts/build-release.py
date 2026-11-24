@@ -105,14 +105,15 @@ def json_bytes(value):
 
 
 # Calendar versions: YEAR.MONTH.INDEX, where INDEX numbers that month's releases
-# from 01 (it is not the day). Tags add a leading "v", for example v2026.09.01.
-CALENDAR_VERSION = r"(20[0-9]{2})\.(0[1-9]|1[0-2])\.(0[1-9]|[1-9][0-9])"
+# from 01 (it is not the day), and an optional HOTFIX from 1 that numbers fixes
+# to that release. Tags add a leading "v", for example v2026.09.01 or v2026.09.01.1.
+CALENDAR_VERSION = r"(20[0-9]{2})\.(0[1-9]|1[0-2])\.(0[1-9]|[1-9][0-9])(?:\.([1-9][0-9]?))?"
 
 
 def validate_version(version):
-    """Return the version without its "v" prefix, or raise for anything but YYYY.MM.NN."""
+    """Return the version without its "v" prefix, or raise for anything but YYYY.MM.NN[.H]."""
     if not isinstance(version, str) or not re.fullmatch(CALENDAR_VERSION, version.removeprefix("v")):
-        raise ValueError("Release version must be a calendar version YYYY.MM.NN, where NN numbers that month's releases from 01 (for example v2026.09.01).")
+        raise ValueError("Release version must be a calendar version YYYY.MM.NN, where NN numbers that month's releases from 01, with an optional hotfix number from 1 (for example v2026.09.01 or v2026.09.01.1).")
     return version.removeprefix("v")
 
 
