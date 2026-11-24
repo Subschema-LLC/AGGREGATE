@@ -93,6 +93,13 @@ In short, every change:
   and the wiring. A change that needs more is a design question for the issue
   or pull request.
 
+The shared FIDES rules sit in a managed block in [AGENTS.md](AGENTS.md). The
+[FIDES rules sync](.github/workflows/fides-sync.yml) checks for a new FIDES
+release every Monday and opens a pull request against `development` when the
+rules change; edit them upstream, not in that block. Before merging one, read
+the release notes: a changed rule can need the same change in
+`tools/arch-check.php` and in this repository's own rules.
+
 The [file map](#architecture-and-file-map) below describes the code that has
 not moved yet; use it to find what to port, not as a pattern for new code.
 

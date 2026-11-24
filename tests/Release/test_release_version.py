@@ -1,4 +1,5 @@
-"""Release tags use vYYYY.MM.NN, where NN numbers that month's releases from 01."""
+"""Release tags use vYYYY.MM.NN, where NN numbers that month's releases from 01,
+and vYYYY.MM.NN.H for hotfixes to the latest release."""
 
 import importlib.util
 from pathlib import Path
@@ -29,11 +30,25 @@ class ReleaseVersionTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "99 releases"):
             VERSIONS.next_version(["v2026.09.99"], "2026.09")
 
+    def test_hotfixes_number_fixes_to_the_newest_release_and_regular_releases_skip_them(self):
+        self.assertEqual("2026.09.02.1", VERSIONS.next_hotfix(["v2026.08.04", "v2026.09.01", "v2026.09.02", "v0.2"]))
+        self.assertEqual("2026.09.02.3", VERSIONS.next_hotfix(["v2026.09.02", "v2026.09.02.1", "v2026.09.02.2", "v2026.09.01.5"]))
+        # Hotfix numbers continue past 9 by value, not by text.
+        self.assertEqual("2026.09.02.11", VERSIONS.next_hotfix(["v2026.09.02", "v2026.09.02.9", "v2026.09.02.10"]))
+        # A new month's hotfix still fixes the newest release, from last month.
+        self.assertEqual("2026.09.02.1", VERSIONS.next_hotfix(["v2026.09.02", "v2026.08.07.3"]))
+        self.assertEqual("2026.09.03", VERSIONS.next_version(["v2026.09.02", "v2026.09.02.4"], "2026.09"))
+        with self.assertRaisesRegex(ValueError, "no release"):
+            VERSIONS.next_hotfix(["v0.2", "v1.0.0"])
+        with self.assertRaisesRegex(ValueError, "99 hotfixes"):
+            VERSIONS.next_hotfix(["v2026.09.02", "v2026.09.02.99"])
+
     def test_check_accepts_only_calendar_tags(self):
-        for tag in ("v2026.09.01", "v2026.12.10", "v2099.01.99"):
+        for tag in ("v2026.09.01", "v2026.12.10", "v2099.01.99", "v2026.09.01.1", "v2026.09.01.99"):
             with self.subTest(tag=tag):
                 self.assertEqual(0, self.run_script("check", tag).returncode)
-        for tag in ("2026.09.01", "v2026.9.1", "v2026.09.1", "v2026.09.00", "v2026.00.01", "v2026.09.01-rc1", "v1.2.3", "v0.2"):
+        for tag in ("2026.09.01", "v2026.9.1", "v2026.09.1", "v2026.09.00", "v2026.00.01", "v2026.09.01-rc1", "v1.2.3", "v0.2",
+                    "v2026.09.01.0", "v2026.09.01.01", "v2026.09.01.100", "v2026.09.01.1.1"):
             with self.subTest(tag=tag):
                 self.assertEqual(1, self.run_script("check", tag).returncode)
 
@@ -47,6 +62,10 @@ class ReleaseVersionTest(unittest.TestCase):
             result = self.run_script("next", "--month", "2026.09", cwd=directory)
             self.assertEqual(0, result.returncode, result.stderr)
             self.assertEqual("v2026.09.03\n", result.stdout)
+            result = self.run_script("next", "--hotfix", cwd=directory)
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertEqual("v2026.09.02.1\n", result.stdout)
+            self.assertNotEqual(0, self.run_script("next", "--hotfix", "--month", "2026.09", cwd=directory).returncode)
 
     def run_script(self, *arguments, cwd=None):
         return subprocess.run([sys.executable, str(SCRIPT), *arguments], capture_output=True, text=True, cwd=cwd)

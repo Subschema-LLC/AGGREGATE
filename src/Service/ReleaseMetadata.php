@@ -36,7 +36,7 @@ final class ReleaseMetadata
             throw new \InvalidArgumentException('Release metadata has an unsupported schema.');
         }
         if (!self::isVersion($data['version'] ?? null)) {
-            throw new \InvalidArgumentException('Release metadata must identify a stable version in YYYY.MM.NN format.');
+            throw new \InvalidArgumentException('Release metadata must identify a stable version in YYYY.MM.NN or YYYY.MM.NN.H format.');
         }
         if ($repository === null) {
             try {
@@ -98,9 +98,10 @@ final class ReleaseMetadata
 
     /**
      * Releases use calendar versions YYYY.MM.NN, where NN numbers that month's
-     * releases from 01 (for example 2026.09.01). Plain X.Y.Z versions from
-     * earlier packages remain readable so those installations can update;
-     * version_compare() orders both, and every calendar version is newer.
+     * releases from 01 (for example 2026.09.01), and a hotfix adds .H from 1
+     * (2026.09.01.1). Plain X.Y.Z versions from earlier packages remain
+     * readable so those installations can update; version_compare() orders all
+     * of them, puts a hotfix after its release, and every calendar version is newer.
      */
     public static function isVersion(mixed $version): bool
     {
@@ -110,7 +111,8 @@ final class ReleaseMetadata
 
     public static function isCalendarVersion(mixed $version): bool
     {
-        return is_string($version) && preg_match('/^20\d{2}\.(?:0[1-9]|1[0-2])\.(?:0[1-9]|[1-9]\d)$/D', $version) === 1;
+        return is_string($version)
+            && preg_match('/^20\d{2}\.(?:0[1-9]|1[0-2])\.(?:0[1-9]|[1-9]\d)(?:\.[1-9]\d?)?$/D', $version) === 1;
     }
 
     /** @param array<string, mixed> $metadata a release manifest's metadata, which may leave requirements out
