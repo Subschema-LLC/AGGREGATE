@@ -363,6 +363,11 @@ environments:
 # website_activity_stale_days (optional, default: 3)
 #   Days without events before an Idle site transitions to Inactive.
 #
+# tag_snippet_share_days (optional, default: 7, range 1-365)
+#   How long a new shared link to a tag's developer snippet stays open.
+#   Links are kept, as hashes only, under tag_snippet_shares in the file that
+#   holds their tags; Stop sharing on the Tag manager removes one.
+#
 # rate_limit_per_minute (optional, default: 100)
 #   Maximum API requests per IP per minute.
 #
