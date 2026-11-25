@@ -56,7 +56,7 @@ final class SnippetCommand
             return Command::FAILURE;
         }
 
-        $result = $this->builder->build($found, $saved['variables'] ?? []);
+        $result = $this->builder->build($found, $saved['variables']);
         if ($result->snippet === null) {
             $output->writeln((string) $result->reason);
 
