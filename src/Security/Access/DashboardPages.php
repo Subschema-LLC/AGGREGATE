@@ -45,7 +45,6 @@ final class DashboardPages
 
     /**
      * In menu order.
-     *
      * @var array<string, array{label: string, scope: string, description: string, levels?: list<string>}>
      */
     public const PAGES = [
@@ -103,6 +102,7 @@ final class DashboardPages
         // Testing a tag saves nothing, but it runs the editor's unsaved changes, so it goes with editing.
         'app_tag_manager_preview' => ['tag_manager', self::EDIT],
         'app_tag_manager_preview_script' => ['tag_manager', self::EDIT],
+        ...\App\Delivery\Web\TagManager\SnippetRoutes::PAGES,
         'app_consent_manager' => ['consent_manager', self::VIEW],
         'app_consent_manager_save' => ['consent_manager', self::EDIT],
         'app_collection_settings' => ['collection_controls', self::VIEW],

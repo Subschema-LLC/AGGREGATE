@@ -25,7 +25,6 @@ final class AdminActions
 
     /**
      * Route => [area, action, methods that record it (POST unless listed)].
-     *
      * @var array<string, array{0: string, 1: string, 2?: list<string>}>
      */
     public const ROUTES = [
@@ -38,6 +37,7 @@ final class AdminActions
         'app_consent_manager_save' => [Area::SETTINGS, 'consent_manager_saved'],
         'app_standalone_consent' => [Area::SETTINGS, 'standalone_consent_saved'],
         'app_tag_manager_save' => [Area::SETTINGS, 'tag_manager_saved'],
+        ...\App\Delivery\Web\TagManager\SnippetRoutes::AUDITED,
         'app_internal_traffic_save' => [Area::SETTINGS, 'organization_traffic_saved'],
         'app_feature_flags_save' => [Area::SETTINGS, 'feature_flags_saved'],
         'app_data_lifecycle_save' => [Area::SETTINGS, 'data_lifecycle_saved'],

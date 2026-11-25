@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Entities\TagManager\SnippetShare;
+
 /**
  * The General settings page's application settings, for the page and
  * app:config alike: the installation's address, the collection address,
- * the tracker's namespace, the rate limit, the website activity thresholds
- * and the documentation address.
+ * the tracker's namespace, the rate limit, the website activity thresholds,
+ * the documentation address and how long a shared tag snippet link lasts.
  */
 final class GeneralSettings
 {
@@ -20,6 +22,7 @@ final class GeneralSettings
         'website_activity_active_days',
         'website_activity_stale_days',
         DocumentationLinks::CONFIG_KEY,
+        SnippetShare::SETTING,
     ];
 
     public function __construct(
@@ -43,6 +46,7 @@ final class GeneralSettings
             'website_activity_active_days' => (int) $this->config->getWithEnvFallback('website_activity_active_days', 1),
             'website_activity_stale_days' => (int) $this->config->getWithEnvFallback('website_activity_stale_days', 3),
             DocumentationLinks::CONFIG_KEY => $this->documentation->configuredValue(),
+            SnippetShare::SETTING => (int) $this->config->get(SnippetShare::SETTING, SnippetShare::DEFAULT_DAYS),
         ];
     }
 
@@ -64,7 +68,8 @@ final class GeneralSettings
      * The YAML values a submission saves, checked as the page checks them.
      * The installation's address, namespace, rate limit and thresholds are
      * always saved; the collection and documentation addresses only when
-     * submitted, changed and not set by the environment, so saving does not
+     * submitted, changed and not set by the environment, and the shared
+     * snippet link days only when submitted and changed, so saving does not
      * pin their defaults.
      *
      * @param array<string, mixed> $submitted
@@ -98,6 +103,13 @@ final class GeneralSettings
             'website_activity_active_days' => $activeDays,
             'website_activity_stale_days' => $staleDays,
         ];
+        // Save the shared snippet link lifetime only when submitted and changed.
+        if (array_key_exists(SnippetShare::SETTING, $submitted)) {
+            $shareDays = SnippetShare::days($submitted[SnippetShare::SETTING]);
+            if ($shareDays !== $this->values()[SnippetShare::SETTING]) {
+                $settings[SnippetShare::SETTING] = $shareDays;
+            }
+        }
 
         // COLLECTION_BASE_URL takes precedence and its field is disabled. Empty
         // means the application host, so clearing the field saves ''.
