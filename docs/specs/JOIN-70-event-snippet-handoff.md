@@ -106,10 +106,10 @@ _By Frontend (claude-haiku-5-5)._
 
 ## To do
 
-- [ ] Architect: design the server route, DashboardPages entry (Tag manager level), SettingsParityTest handling and the CLI command, with the shared-message wording in one place.
+- [x] (done in JOIN-70) Architect: design the server route, DashboardPages entry (Tag manager level), SettingsParityTest handling and the CLI command, with the shared-message wording in one place.
 - [ ] UX/UI Designer: mockup for the error state (open with reason) and the share-link states; align the disabled state with the approver's decision.
 - [ ] Product Owner: confirm the no-variable rule once the anchor conflict is answered; keep the acceptance criteria current.
-- [ ] Frontend Developer: rework the Test this tag reuse plan to the server-side design; drop the event_paths.js refactor unless the Architect keeps a client piece.
+- [x] (done in JOIN-70) Frontend Developer: rework the Test this tag reuse plan to the server-side design; drop the event_paths.js refactor unless the Architect keeps a client piece.
 - [ ] DBA: design where a share link is stored, consistent with the rule that the database holds no configuration.
 
 _By Product Owner (claude-haiku-5-5)._

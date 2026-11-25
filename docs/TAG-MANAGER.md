@@ -513,6 +513,26 @@ is loaded, sent or saved. Custom JavaScript does not run in the test; the result
 shows only whether it would. A tag set to run after another assumes that one has
 finished. The test needs the tag manager page at edit level.
 
+## Hand a tag to a developer
+
+On a Send an Aggregate event tag, **Get developer snippet** opens a panel
+with a `dataLayer.push` for the tag as edited, without saving or sending
+anything. Each value read from a variable is a marked placeholder,
+`'<<REPLACE: key, type>>'`, named by its custom data key. Latest-value
+variables are placeholders too, with a note that they may already be on the
+page. A variable that reads through `event` is left out and listed under
+**Needs attention**, as are conflicting paths (both variables are named; the
+rest is still built). If there is no snippet, the panel gives the reason.
+
+The command line prints the same text for a saved tag:
+
+```
+php bin/console app:tag-manager:snippet <tag> [--site=ID]
+```
+
+Not built yet: share links and the property-table fallback for tags with no
+variables.
+
 ## Trigger and browser-event dictionary
 
 | YAML trigger | Browser equivalent | When it runs |
