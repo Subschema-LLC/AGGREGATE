@@ -11,23 +11,29 @@ use App\Service\AggregateConfigLoader;
 use App\Service\SiteScriptConfig;
 use App\Service\TagManagerForm;
 use App\Service\TagManagerSettings;
-use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Security\Core\Authorization\AuthorizationCheckerInterface;
+use Symfony\Component\Security\Core\Exception\AccessDeniedException;
+use Symfony\Component\Security\Csrf\CsrfToken;
+use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
  * "Get developer snippet": builds the dataLayer.push for one tag row as the editor
  * has it, saved or not, and answers with the snippet or the reason there is none.
  * Nothing is saved or sent. The same builder serves app:tag-manager:snippet.
  */
-final class BuildEventSnippetController extends AbstractController
+final class BuildEventSnippetController
 {
     public const CSRF_TOKEN_ID = 'tag_manager_settings';
 
     public function __construct(
         private readonly AggregateConfigLoader $config,
+        private readonly AuthorizationCheckerInterface $authorization,
+        private readonly CsrfTokenManagerInterface $csrf,
         private readonly WebsiteAccess $access,
         private readonly TagManagerSettings $settings,
         private readonly SiteScriptConfig $sites,
@@ -43,13 +49,13 @@ final class BuildEventSnippetController extends AbstractController
     public function __invoke(Request $request): Response
     {
         if (!$this->config->isDashboardEnabled()) {
-            throw $this->createNotFoundException('Dashboard is disabled.');
+            throw new NotFoundHttpException('Dashboard is disabled.');
         }
-        $this->denyAccessUnlessGranted(
-            DashboardAccessVoter::ROUTE,
-            $request,
-            'You do not have access to this page. Ask an administrator if you need it.',
-        );
+        if (!$this->authorization->isGranted(DashboardAccessVoter::ROUTE, $request)) {
+            throw new AccessDeniedException(
+                'You do not have access to this page. Ask an administrator if you need it.',
+            );
+        }
         $submitted = $request->request->all();
         $siteId = $submitted['site'] ?? '';
         if (!is_string($siteId)) {
@@ -59,10 +65,10 @@ final class BuildEventSnippetController extends AbstractController
             ? $this->access->allowsEveryWebsite()
             : $this->access->allowsSiteId($siteId);
         if (!$usable) {
-            throw $this->createAccessDeniedException('Choose a website you can use.');
+            throw new AccessDeniedException('Choose a website you can use.');
         }
         $csrf = $submitted['_csrf_token'] ?? null;
-        if (!is_string($csrf) || !$this->isCsrfTokenValid(self::CSRF_TOKEN_ID, $csrf)) {
+        if (!is_string($csrf) || !$this->csrf->isTokenValid(new CsrfToken(self::CSRF_TOKEN_ID, $csrf))) {
             return $this->failure(
                 'Invalid security token. Reload the page and try again.',
                 Response::HTTP_FORBIDDEN,
