@@ -11,8 +11,8 @@ namespace App\Features\TagManager\BuildEventSnippet;
 final class ConflictingPaths
 {
     /**
-     * @param list<array{key: string, alias: string, path: string, segments: list<mixed>}> $places
-     * @return array{0: list<array{key: string, alias: string, path: string, segments: list<mixed>}>, 1: list<string>}
+     * @param list<array<string, mixed>> $places key, alias, path and segments each
+     * @return array{0: list<array<string, mixed>>, 1: list<string>}
      *     the places that do not conflict, and one attention line per conflict
      */
     public function split(array $places): array
