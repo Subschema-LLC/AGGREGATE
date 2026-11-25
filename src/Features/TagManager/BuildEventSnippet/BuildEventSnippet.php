@@ -17,7 +17,6 @@ namespace App\Features\TagManager\BuildEventSnippet;
 final class BuildEventSnippet
 {
     private const DEFAULT_TYPE = 'text, a number, true or false';
-    private const LATEST = 'may already be on the page from an earlier push';
 
     /**
      * @param array<string, mixed> $tag the tag as edited: type, trigger, event
@@ -41,19 +40,17 @@ final class BuildEventSnippet
         $attention = [];
         $places = $this->places($tag, $variables, $attention);
         $attention = [...$attention, ...$this->dropConflicts($places)];
-        $tree = [];
+        $tree = new PlaceholderTree();
         foreach ($places as $place) {
-            $this->insert($tree, $place['segments'], [
-                $place['key'],
-                $types[$place['key']] ?? self::DEFAULT_TYPE,
-            ]);
+            $type = $types[$place['key']] ?? self::DEFAULT_TYPE;
+            $tree->add($place['segments'], $place['key'], $type);
         }
         $lines = [
             '// Add this where the page makes the event. Replace each marked value.',
             'window.dataLayer = window.dataLayer || [];',
             'window.dataLayer.push({',
             "  event: '".$name."',",
-            ...$this->members($tree, '  '),
+            ...$tree->lines('  '),
             '});',
         ];
 
@@ -111,7 +108,8 @@ final class BuildEventSnippet
     }
 
     /**
-     * @param list<array{key: string, alias: string, path: string, segments: list<int|string>}> $places
+     * @param list<array{key: string, alias: string, path: string,
+     *     segments: list<int|string>}> $places
      * @return list<string>
      */
     private function dropConflicts(array &$places): array
@@ -124,7 +122,8 @@ final class BuildEventSnippet
                     continue;
                 }
                 $length = min(count($a['segments']), count($b['segments']));
-                if (array_slice($a['segments'], 0, $length) !== array_slice($b['segments'], 0, $length)) {
+                $shared = array_slice($a['segments'], 0, $length);
+                if ($shared !== array_slice($b['segments'], 0, $length)) {
                     continue;
                 }
                 $drop[$i] = $drop[$j] = true;
@@ -141,67 +140,5 @@ final class BuildEventSnippet
         $places = array_values(array_diff_key($places, $drop));
 
         return $attention;
-    }
-
-    /** @param array<int|string, mixed> $tree @param list<int|string> $segments */
-    private function insert(array &$tree, array $segments, array $leaf): void
-    {
-        $segment = array_shift($segments);
-        if ($segments === []) {
-            $tree[$segment] = ['leaf' => $leaf];
-
-            return;
-        }
-        $tree[$segment] ??= ['children' => []];
-        $this->insert($tree[$segment]['children'], $segments, $leaf);
-    }
-
-    /** @return list<string> */
-    private function members(array $tree, string $pad): array
-    {
-        $lines = [];
-        foreach ($tree as $segment => $node) {
-            $lines = [...$lines, ...$this->render($node, $pad, $segment.': ')];
-        }
-
-        return $lines;
-    }
-
-    /** @return list<string> */
-    private function render(array $node, string $pad, string $prefix): array
-    {
-        if (isset($node['leaf'])) {
-            [$key, $type] = $node['leaf'];
-
-            return [sprintf(
-                "%s%s'<<REPLACE: %s, %s>>', // %s; %s",
-                $pad,
-                $prefix,
-                $key,
-                $type,
-                $type,
-                self::LATEST,
-            )];
-        }
-        $children = $node['children'];
-        if (array_keys($children) === array_keys(array_fill(0, count($children), 0))) {
-            return [$pad.$prefix.'[', ...$this->elements($children, $pad.'  '), $pad.'],'];
-        }
-        if (array_filter(array_keys($children), 'is_int') === []) {
-            return [$pad.$prefix.'{', ...$this->members($children, $pad.'  '), $pad.'},'];
-        }
-
-        return [$pad.$prefix.'{', ...$this->members($children, $pad.'  '), $pad.'},'];
-    }
-
-    /** @return list<string> */
-    private function elements(array $children, string $pad): array
-    {
-        $lines = [];
-        foreach ($children as $node) {
-            $lines = [...$lines, ...$this->render($node, $pad, '')];
-        }
-
-        return $lines;
     }
 }
