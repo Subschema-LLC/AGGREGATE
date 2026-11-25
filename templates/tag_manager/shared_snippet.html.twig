@@ -1,0 +1,35 @@
+{# The read-only page a shared developer snippet link opens. It shows the saved tag's snippet only. #}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex,nofollow,noarchive">
+    <meta name="referrer" content="no-referrer">
+    <title>{{ open ? 'Snippet for your developer' : 'This link is not open' }}</title>
+    <link rel="stylesheet" href="{{ asset('styles/pages/tag_manager/shared_snippet.css') }}" referrerpolicy="no-referrer">
+</head>
+<body>
+<main class="shared-snippet">
+{% if open %}
+    <h1>Snippet for your developer</h1>
+    <p>Add this where the page makes the event. Replace each marked value with the real value. This page shows the saved tag only; changes not yet saved in the editor are not here.</p>
+    {% if reason %}
+        <p class="shared-snippet-reason" role="status">{{ reason }}</p>
+    {% else %}
+        <pre class="shared-snippet-code" tabindex="0">{{ snippet }}</pre>
+    {% endif %}
+    {% if attention is not empty %}
+        <h2>Needs attention</h2>
+        <ul>
+            {% for item in attention %}<li>{{ item }}</li>{% endfor %}
+        </ul>
+    {% endif %}
+    <p class="shared-snippet-note">This page is read-only. Anyone with its address can read it until {{ expires|date('j M Y H:i', 'UTC') }} UTC, unless sharing is stopped sooner.</p>
+{% else %}
+    <h1>This link is not open</h1>
+    <p>The link has expired or sharing was stopped. Ask the person who sent it for a new link.</p>
+{% endif %}
+</main>
+</body>
+</html>

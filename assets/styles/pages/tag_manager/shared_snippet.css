@@ -1,0 +1,9 @@
+/* The read-only page a shared developer snippet link opens. */
+body { color: #1f2328; font-family: system-ui, sans-serif; line-height: 1.5; margin: 0; }
+.shared-snippet { margin: 0 auto; max-width: 48rem; padding: 2rem 1rem; }
+.shared-snippet-code {
+    background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 6px;
+    max-height: 32rem; overflow: auto; padding: 1rem; white-space: pre;
+}
+.shared-snippet-reason { background: #fff8c5; border-radius: 6px; padding: 0.75rem 1rem; }
+.shared-snippet-note { color: #57606a; font-size: 0.9rem; }

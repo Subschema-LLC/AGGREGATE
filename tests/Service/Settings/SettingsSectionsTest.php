@@ -89,6 +89,17 @@ final class SettingsSectionsTest extends TestCase
         }
         self::assertSame(250, $this->saved()['rate_limit_per_minute']);
 
+        $section->apply(['tag_snippet_share_days' => '14']);
+        self::assertSame(14, $this->saved()['tag_snippet_share_days']);
+        foreach ([0, 366, '2.5'] as $refused) {
+            try {
+                $section->apply(['tag_snippet_share_days' => $refused]);
+                self::fail('A link lifetime of '.var_export($refused, true).' is refused.');
+            } catch (\InvalidArgumentException $e) {
+                self::assertStringContainsString('from 1 to 365', $e->getMessage());
+            }
+        }
+
         $this->expectExceptionMessage('not in the general settings');
         $section->apply(['brand_name' => 'Acme']);
     }

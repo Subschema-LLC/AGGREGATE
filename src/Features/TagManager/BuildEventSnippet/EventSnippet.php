@@ -7,7 +7,7 @@ namespace App\Features\TagManager\BuildEventSnippet;
 /**
  * What the developer handoff shows for one tag: the snippet, or the reason there
  * is none, plus the items that need attention. The dashboard and the command
-line print these same texts.
+ * line print these same texts.
  */
 final class EventSnippet
 {

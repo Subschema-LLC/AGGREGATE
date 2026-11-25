@@ -7,7 +7,9 @@ namespace App\Features\TagManager\BuildEventSnippet;
 /**
  * The marked placeholders of a developer snippet, nested at their variables'
  * paths, and the dataLayer.push members that place them. A run of numeric
- * keys from 0 becomes an array; any other keys become an object.
+ * keys from 0 becomes an array; any other keys become an object. A key that is
+ * not a JavaScript name is quoted. Only latest-value placeholders say they may
+ * already be on the page.
  */
 final class PlaceholderTree
 {
@@ -17,9 +19,9 @@ final class PlaceholderTree
     private array $tree = [];
 
     /** @param list<int|string> $segments */
-    public function add(array $segments, string $key, string $type): void
+    public function add(array $segments, string $key, string $type, bool $latest): void
     {
-        $this->insert($this->tree, $segments, [$key, $type]);
+        $this->insert($this->tree, $segments, [$key, $type, $latest]);
     }
 
     /** @return list<string> */
@@ -46,7 +48,9 @@ final class PlaceholderTree
     {
         $lines = [];
         foreach ($tree as $segment => $node) {
-            $lines = [...$lines, ...$this->render($node, $pad, $segment.': ')];
+            $name = preg_match('/^[A-Za-z_$][A-Za-z0-9_$]*$/D', (string) $segment) === 1
+                || is_int($segment) ? (string) $segment : "'".$segment."'";
+            $lines = [...$lines, ...$this->render($node, $pad, $name.': ')];
         }
 
         return $lines;
@@ -56,16 +60,16 @@ final class PlaceholderTree
     private function render(array $node, string $pad, string $prefix): array
     {
         if (isset($node['leaf'])) {
-            [$key, $type] = $node['leaf'];
+            [$key, $type, $latest] = $node['leaf'];
 
             return [sprintf(
-                "%s%s'<<REPLACE: %s, %s>>', // %s; %s",
+                "%s%s'<<REPLACE: %s, %s>>', // %s%s",
                 $pad,
                 $prefix,
                 $key,
                 $type,
                 $type,
-                self::LATEST,
+                $latest ? '; '.self::LATEST : '',
             )];
         }
         $children = $node['children'];

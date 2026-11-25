@@ -72,6 +72,7 @@ security:
         - { path: ^/install, roles: PUBLIC_ACCESS }
         - { path: ^/branding/logo$, roles: PUBLIC_ACCESS }
         - { path: ^/internal-traffic(?:/|$), roles: PUBLIC_ACCESS }
+        - { path: ^/shared-snippet/, roles: PUBLIC_ACCESS }
         - { path: ^/dashboard, roles: ROLE_USER }
 
 when@test:
