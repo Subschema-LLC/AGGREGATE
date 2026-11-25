@@ -279,7 +279,7 @@ tag.emit('newsletter_signup', {plan: tag.get('plan')});" data-components--tag-ma
             <div role="status" aria-live="polite" data-components--tag-manager--tag-row-target="previewResult"></div>
         </details>
         {% endif %}
-        <div class="snippet-handoff mb-3" data-snippet-handoff data-controller="components--tag-manager--snippet" data-components--tag-manager--snippet-url-value="{{ path('app_tag_manager_snippet') }}" data-action="keydown->components--tag-manager--snippet#escape"{% if tag.type != 'event' or tag.trigger.type != 'data_layer' %} hidden{% endif %}>
+        <div class="snippet-handoff mb-3" data-snippet-handoff data-controller="components--tag-manager--snippet" data-components--tag-manager--snippet-url-value="{{ path('app_tag_manager_snippet') }}" data-action="keydown->components--tag-manager--snippet#escape">
             <button type="button" class="button is-small is-light" aria-expanded="false" aria-controls="tag-{{ index }}-snippet" data-components--tag-manager--snippet-target="button" data-action="components--tag-manager--snippet#toggle">Get developer snippet</button>
             <div class="box is-shadowless snippet-handoff-panel mt-2" id="tag-{{ index }}-snippet" hidden data-components--tag-manager--snippet-target="panel">
                 <h4 class="title is-6" tabindex="-1" data-components--tag-manager--snippet-target="heading">Snippet for your developer</h4>
