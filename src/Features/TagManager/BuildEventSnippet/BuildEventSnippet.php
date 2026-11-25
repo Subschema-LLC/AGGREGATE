@@ -34,7 +34,8 @@ final class BuildEventSnippet
             return $this->reason('Set the trigger to a data layer event first.');
         }
         $name = $trigger['event'] ?? '';
-        if (!is_string($name) || preg_match('/^[A-Za-z][A-Za-z0-9_.:-]{0,99}$/D', $name) !== 1) {
+        $valid = '/^[A-Za-z][A-Za-z0-9_.:-]{0,99}$/D';
+        if (!is_string($name) || preg_match($valid, $name) !== 1) {
             return $this->reason('Add an event name to the trigger first.');
         }
 
@@ -67,7 +68,7 @@ final class BuildEventSnippet
 
     /**
      * @param list<string> $attention
-     * @return list<array{key: string, alias: string, path: string, segments: list<int|string>}>
+     * @return list<array{key: string, alias: string, path: string, segments: list<mixed>}>
      */
     private function places(array $tag, array $variables, array &$attention): array
     {
@@ -81,7 +82,8 @@ final class BuildEventSnippet
             $path = $variables[$alias] ?? null;
             if (!is_string($path) || $path === '') {
                 $attention[] = sprintf(
-                    'Variable `%s` is not defined, so `%s` is left out. Add it under Variables.',
+                    'Variable `%s` is not defined, so `%s` is left out. '
+                    .'Add it under Variables.',
                     $alias,
                     $key,
                 );
@@ -111,7 +113,7 @@ final class BuildEventSnippet
     }
 
     /**
-     * @param list<array{key: string, alias: string, path: string, segments: list<int|string>}> $places
+     * @param list<array{key: string, alias: string, path: string, segments: list<mixed>}> $places
      * @return list<string>
      */
     private function dropConflicts(array &$places): array
@@ -124,7 +126,8 @@ final class BuildEventSnippet
                     continue;
                 }
                 $length = min(count($a['segments']), count($b['segments']));
-                if (array_slice($a['segments'], 0, $length) !== array_slice($b['segments'], 0, $length)) {
+                $shared = array_slice($a['segments'], 0, $length);
+                if ($shared !== array_slice($b['segments'], 0, $length)) {
                     continue;
                 }
                 $drop[$i] = $drop[$j] = true;
@@ -186,9 +189,6 @@ final class BuildEventSnippet
         $children = $node['children'];
         if (array_keys($children) === array_keys(array_fill(0, count($children), 0))) {
             return [$pad.$prefix.'[', ...$this->elements($children, $pad.'  '), $pad.'],'];
-        }
-        if (array_filter(array_keys($children), 'is_int') === []) {
-            return [$pad.$prefix.'{', ...$this->members($children, $pad.'  '), $pad.'},'];
         }
 
         return [$pad.$prefix.'{', ...$this->members($children, $pad.'  '), $pad.'},'];
