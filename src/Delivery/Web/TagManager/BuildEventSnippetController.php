@@ -6,6 +6,7 @@ namespace App\Delivery\Web\TagManager;
 
 use App\Controller\DashboardAccess;
 use App\Features\TagManager\BuildEventSnippet\BuildEventSnippet;
+use App\Service\AggregateConfigLoader;
 use App\Service\SiteScriptConfig;
 use App\Service\TagManagerForm;
 use App\Service\TagManagerSettings;
@@ -27,6 +28,7 @@ final class BuildEventSnippetController extends AbstractController
     public const CSRF_TOKEN_ID = 'tag_manager_settings';
 
     public function __construct(
+        private readonly AggregateConfigLoader $config,
         private readonly TagManagerSettings $settings,
         private readonly SiteScriptConfig $sites,
         private readonly BuildEventSnippet $builder,
@@ -101,9 +103,8 @@ final class BuildEventSnippetController extends AbstractController
             );
         }
         $tag = $settings['tags'][0] ?? [];
-        $variables = is_array($settings['variables'] ?? null) ? $settings['variables'] : [];
 
-        return $this->answer($this->builder->build($tag, $variables)->toArray());
+        return $this->answer($this->builder->build($tag, $settings['variables'])->toArray());
     }
 
     /** @param array<string, mixed> $body */
