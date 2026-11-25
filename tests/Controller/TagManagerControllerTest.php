@@ -5,6 +5,18 @@ declare(strict_types=1);
 namespace App\Tests\Controller;
 
 use App\Controller\TagManagerController;
+use App\Delivery\Web\TagManager\BuildEventSnippetController;
+use App\Delivery\Web\TagManager\ShareEventSnippetController;
+use App\Delivery\Web\TagManager\SharedEventSnippetController;
+use App\Delivery\Web\TagManager\SnippetEditorRequest;
+use App\Delivery\Web\TagManager\SnippetRoutes;
+use App\Features\TagManager\BuildEventSnippet\BuildEventSnippet;
+use App\Features\TagManager\ReadSharedEventSnippet\ReadSharedEventSnippet;
+use App\Features\TagManager\ShareEventSnippet\ShareEventSnippet;
+use App\Features\TagManager\StopSharingEventSnippet\StopSharingEventSnippet;
+use App\Integrations\TagManager\YamlSnippetShares;
+use App\Security\Access\UserAccessResolver;
+use App\Security\Access\WebsiteAccess;
 use App\Service\AggregateConfigLoader;
 use App\Service\FeatureFlags;
 use App\Service\AppBranding;
@@ -15,6 +27,7 @@ use App\Service\WebsiteConfigManager;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
+use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\DependencyInjection\Container;
 use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\Filesystem\Filesystem;
@@ -602,6 +615,179 @@ final class TagManagerControllerTest extends TestCase
         self::assertSame('ecommerce.items[0].category', $crawler->filter('#variable-0-path')->attr('placeholder'));
     }
 
+    /**
+     * "Get developer snippet" builds the row as edited, saves nothing, and tells the
+     * editor whether the saved tag is shared; "Share link" opens a read-only page of
+     * the saved tag that "Stop sharing" closes.
+     */
+    public function testSnippetRouteBuildsTheEditedRowAndSharesOnlyTheSavedTag(): void
+    {
+        $form = $this->snippetForm();
+        $save = $this->request($form);
+        $this->controller($save)->save($save);
+        $file = $this->sitePath($this->siteId);
+        $before = file_get_contents($file);
+
+        $page = $this->view($save, ['site' => $this->siteId]);
+        $handoff = $page->filter('#tag-2-snippet')->closest('[data-snippet-handoff]');
+        self::assertSame('Get developer snippet', trim($handoff->filter('button')->first()->text()));
+        self::assertSame(
+            '/dashboard/tag-manager/snippet',
+            $handoff->attr('data-components--tag-manager--snippet-url-value'),
+        );
+        self::assertSame(
+            '/dashboard/tag-manager/snippet/share',
+            $handoff->attr('data-components--tag-manager--snippet-share-url-value'),
+        );
+
+        $form['tags'][2]['trigger']['event'] = 'signup_done';
+        $body = $this->snippet($form + ['snippet_tag' => '2']);
+        self::assertSame($before, file_get_contents($file), 'nothing is saved');
+        self::assertNull($body['reason']);
+        self::assertStringContainsString("event: 'signup_done',", $body['snippet'], 'the edited row');
+        self::assertStringContainsString("'<<REPLACE: plan, ", $body['snippet']);
+        self::assertSame('signup', $body['tag']);
+        self::assertNull($body['shared_until']);
+
+        $shared = $this->snippetShare('share', ['tag' => 'signup']);
+        self::assertSame(200, $shared->getStatusCode(), (string) $shared->getContent());
+        $link = json_decode((string) $shared->getContent(), true, flags: JSON_THROW_ON_ERROR);
+        $pattern = '~^https?://[^/]+/shared-snippet/'.$this->siteId.'/([a-f0-9]{48})$~';
+        self::assertMatchesRegularExpression($pattern, $link['url']);
+        preg_match($pattern, $link['url'], $match);
+        $token = $match[1];
+        self::assertStringContainsString('Anyone with this link', $link['message']);
+        $yaml = (string) file_get_contents($file);
+        self::assertStringNotContainsString($token, $yaml, 'only a hash of the token is kept');
+        self::assertStringContainsString(hash('sha256', $token), $yaml);
+        self::assertNotNull($this->snippet($form + ['snippet_tag' => '2'])['shared_until']);
+
+        $open = $this->sharedPage($this->siteId, $token);
+        self::assertSame(200, $open->getStatusCode());
+        self::assertStringContainsString('noindex', (string) $open->headers->get('X-Robots-Tag'));
+        self::assertStringContainsString('no-store', (string) $open->headers->get('Cache-Control'));
+        $text = (new Crawler((string) $open->getContent()))->filter('main')->text();
+        self::assertStringContainsString("event: 'signup',", $text, 'the saved tag, not the edit');
+        self::assertStringNotContainsString('signup_done', $text);
+        self::assertStringContainsString('shows the saved tag only', $text);
+        self::assertSame(404, $this->sharedPage($this->siteId, str_repeat('a', 48))->getStatusCode());
+        self::assertSame(404, $this->sharedPage($this->otherSiteId, $token)->getStatusCode());
+
+        $stop = $this->snippetShare('share/stop', ['tag' => 'signup']);
+        self::assertStringContainsString('Sharing stopped', (string) $stop->getContent());
+        self::assertSame(404, $this->sharedPage($this->siteId, $token)->getStatusCode());
+        $again = $this->snippetShare('share/stop', ['tag' => 'signup']);
+        self::assertStringContainsString('no open link', (string) $again->getContent());
+    }
+
+    public function testSnippetRouteRefusesWhatItCannotUse(): void
+    {
+        $form = $this->snippetForm();
+        $denied = $this->snippetRequest('/dashboard/tag-manager/snippet', $form + ['snippet_tag' => '2']);
+        self::assertSame(403, $this->snippetController($denied, csrfValid: false)($denied)->getStatusCode());
+
+        $viewer = $this->snippetRequest('/dashboard/tag-manager/snippet', $form + ['snippet_tag' => '2']);
+        try {
+            $this->snippetController($viewer, admin: false)($viewer);
+            self::fail('A user without editing on the tag manager cannot build snippets.');
+        } catch (AccessDeniedException) {
+        }
+
+        $unknown = $form;
+        $unknown['site'] = str_repeat('f', 24);
+        $request = $this->snippetRequest('/dashboard/tag-manager/snippet', $unknown + ['snippet_tag' => '2']);
+        self::assertSame(422, $this->snippetController($request)($request)->getStatusCode());
+
+        foreach (['', '9', 'x'] as $index) {
+            $request = $this->snippetRequest('/dashboard/tag-manager/snippet', $form + ['snippet_tag' => $index]);
+            self::assertSame(422, $this->snippetController($request)($request)->getStatusCode(), $index);
+        }
+
+        $unsaved = $this->snippetShare('share', ['tag' => 'not-saved']);
+        self::assertSame(422, $unsaved->getStatusCode());
+        self::assertStringContainsString('Save this tag first', (string) $unsaved->getContent());
+    }
+
+    private function snippetForm(): array
+    {
+        $form = $this->siteForm();
+        $form['tags'][] = [
+            'id' => 'signup', 'type' => 'event', 'enabled' => '1', 'consent' => 'analytics',
+            'event_json' => '{"eventName": "signup", "customData": {"plan": {"$var": "plan"}, "source": "form"}}',
+            'trigger' => ['type' => 'data_layer', 'event' => 'signup'],
+        ];
+
+        return $form;
+    }
+
+    /** @return array<string, mixed> */
+    private function snippet(array $form): array
+    {
+        $request = $this->snippetRequest('/dashboard/tag-manager/snippet', $form);
+        $response = $this->snippetController($request)($request);
+        self::assertSame(200, $response->getStatusCode(), (string) $response->getContent());
+        self::assertStringContainsString('no-store', (string) $response->headers->get('Cache-Control'));
+
+        return json_decode((string) $response->getContent(), true, flags: JSON_THROW_ON_ERROR);
+    }
+
+    private function snippetShare(string $action, array $fields): \Symfony\Component\HttpFoundation\Response
+    {
+        $request = $this->snippetRequest('/dashboard/tag-manager/snippet/'.$action, ['site' => $this->siteId] + $fields);
+        [, $share] = $this->snippetControllers($request);
+
+        return $action === 'share' ? $share->share($request) : $share->stop($request);
+    }
+
+    private function sharedPage(string $site, string $token): \Symfony\Component\HttpFoundation\Response
+    {
+        $request = Request::create('/shared-snippet/'.$site.'/'.$token);
+
+        return $this->snippetControllers($request)[2]($site, $token);
+    }
+
+    private function snippetRequest(string $path, array $form): Request
+    {
+        $request = Request::create($path, 'POST', $form + ['_csrf_token' => 'valid-token']);
+        $request->setSession(new Session(new MockArraySessionStorage()));
+
+        return $request;
+    }
+
+    private function snippetController(Request $request, bool $csrfValid = true, bool $admin = true): BuildEventSnippetController
+    {
+        return $this->snippetControllers($request, $csrfValid, $admin)[0];
+    }
+
+    /** @return array{0: BuildEventSnippetController, 1: ShareEventSnippetController, 2: SharedEventSnippetController} */
+    private function snippetControllers(Request $request, bool $csrfValid = true, bool $admin = true): array
+    {
+        $props = new \App\Integrations\TagManager\CustomDataSettingsProperties();
+        $syntax = new \App\Integrations\TagManager\PeastCustomCodeSyntax();
+        $store = new \App\Integrations\TagManager\YamlTagManagers($this->config, $props, $syntax, $this->sites);
+        $settings = new TagManagerSettings($this->config, $this->sites, new FeatureFlags($this->config), $props, $syntax, $store);
+        $shares = new YamlSnippetShares($this->config, $this->sites);
+        $authorization = $this->createStub(AuthorizationCheckerInterface::class);
+        $authorization->method('isGranted')->willReturn($admin);
+        $csrf = $this->createStub(CsrfTokenManagerInterface::class);
+        $csrf->method('isTokenValid')->willReturnCallback(static fn (CsrfToken $token): bool => $csrfValid
+            && $token->getId() === BuildEventSnippetController::CSRF_TOKEN_ID && $token->getValue() === 'valid-token');
+        // Without a main request (as here) WebsiteAccess treats the caller as an administrator.
+        $resolver = (new \ReflectionClass(UserAccessResolver::class))->newInstanceWithoutConstructor();
+        $access = new WebsiteAccess($this->createStub(Security::class), $resolver, new RequestStack(), new WebsiteConfigManager($this->projectDir));
+        $check = new SnippetEditorRequest($this->config, $authorization, $csrf, $access, $this->sites);
+        $router = $this->createStub(UrlGeneratorInterface::class);
+        $router->method('generate')->willReturnCallback(static fn (string $route, array $parameters): string => 'https://analytics.example'.SnippetRoutes::sharedPath($parameters['site'] === 'shared' ? null : $parameters['site'], $parameters['token']));
+        $builder = new BuildEventSnippet();
+        $read = new ReadSharedEventSnippet($shares, $store);
+
+        return [
+            new BuildEventSnippetController($check, $settings, $builder, $read),
+            new ShareEventSnippetController($check, new ShareEventSnippet($shares, $store), new StopSharingEventSnippet($shares), $router),
+            new SharedEventSnippetController($this->config, $read, $builder, $this->twig()),
+        ];
+    }
+
     private static function validForm(): array
     {
         return ['site' => '', 'enabled' => '1', 'variables' => [], 'tags' => [['id' => 'analytics', 'src' => 'https://scripts.example/analytics.js', 'enabled' => '1', 'consent' => 'analytics']]];
@@ -912,6 +1098,8 @@ final class TagManagerControllerTest extends TestCase
                 'app_tag_manager_save' => '/dashboard/tag-manager/save',
                 'app_tag_manager_download' => '/dashboard/tag-manager/download',
                 'app_tag_manager_snippet' => '/dashboard/tag-manager/snippet',
+                'app_tag_manager_snippet_share' => '/dashboard/tag-manager/snippet/share',
+                'app_tag_manager_snippet_share_stop' => '/dashboard/tag-manager/snippet/share/stop',
                 'app_tag_manager_preview' => '/dashboard/tag-manager/preview',
                 'app_tag_manager_preview_script' => '/dashboard/tag-manager/preview/'.($parameters['token'] ?? '').'.js',
                 'app_setup' => '/dashboard/setup',

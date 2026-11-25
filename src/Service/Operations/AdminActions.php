@@ -25,7 +25,6 @@ final class AdminActions
 
     /**
      * Route => [area, action, methods that record it (POST unless listed)].
-     *
      * @var array<string, array{0: string, 1: string, 2?: list<string>}>
      */
     public const ROUTES = [
@@ -38,6 +37,7 @@ final class AdminActions
         'app_consent_manager_save' => [Area::SETTINGS, 'consent_manager_saved'],
         'app_standalone_consent' => [Area::SETTINGS, 'standalone_consent_saved'],
         'app_tag_manager_save' => [Area::SETTINGS, 'tag_manager_saved'],
+        ...\App\Delivery\Web\TagManager\SnippetRoutes::AUDITED,
         'app_internal_traffic_save' => [Area::SETTINGS, 'organization_traffic_saved'],
         'app_feature_flags_save' => [Area::SETTINGS, 'feature_flags_saved'],
         'app_data_lifecycle_save' => [Area::SETTINGS, 'data_lifecycle_saved'],
@@ -133,7 +133,7 @@ final class AdminActions
         'app_login_code_request' => 'Asking for a sign-in code is recorded by SignInCodeRequests, under sign_ins.',
         'app_login_code_verify' => 'Signing in with a code is recorded from the security events, under sign_ins.',
         'app_bi_glossary_suggestions' => 'Returns suggested labels; changes nothing.',
-        'app_tag_manager_preview' => 'Tests a tag from the editor without saving it; changes nothing but the user\'s own session.', 'app_tag_manager_snippet' => 'Builds a developer snippet; saves and sends nothing.',
+        'app_tag_manager_preview' => 'Tests a tag from the editor without saving it; changes nothing but the user\'s own session.',
         'app_home' => 'The home page accepts any method and changes nothing.',
         'mcp' => 'AI assistant requests; each tool call is recorded by McpUsageLog under assistant.',
         'mcp_oauth_register' => 'An assistant registering itself before sign-in; an administrator\'s approval is recorded under integrations.',

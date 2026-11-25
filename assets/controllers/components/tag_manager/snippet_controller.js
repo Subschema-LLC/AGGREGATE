@@ -1,12 +1,16 @@
 // "Get developer snippet" on a tag row: posts the row as edited to the server, which
 // builds the dataLayer.push, and shows the snippet, the reason there is none and the
 // items needing attention. It parses no paths itself, so the dashboard and the command
-// line print the same text. Nothing is saved or sent.
+// line print the same text. Nothing is saved or sent. "Share link" makes a read-only
+// page for the saved tag and "Stop sharing" closes it; the link is shown only once.
 import { Controller } from '@hotwired/stimulus';
 
 export default class extends Controller {
-    static targets = ['button', 'panel', 'heading', 'reason', 'code', 'attention', 'stale', 'live', 'copy'];
-    static values = { url: String };
+    static targets = [
+        'button', 'panel', 'heading', 'reason', 'code', 'attention', 'stale', 'live', 'copy',
+        'shareButton', 'sharing', 'shareStatus', 'shareLinkBox', 'shareLink', 'copyLink', 'stopButton',
+    ];
+    static values = { url: String, shareUrl: String, stopUrl: String };
 
     connect() {
         this.row = this.element.closest('[data-tag-row]');
@@ -40,6 +44,15 @@ export default class extends Controller {
         }
     }
 
+    editorFields(body) {
+        const form = this.element.closest('form');
+        ['_csrf_token', 'site'].forEach((name) => {
+            const field = form?.querySelector(`[name="${name}"]`);
+            if (field) body.append(name, field.value);
+        });
+        return body;
+    }
+
     async build() {
         const form = this.element.closest('form');
         if (!form || !this.row) return;
@@ -52,10 +65,7 @@ export default class extends Controller {
             if (keep(el)) body.append(el.name, el.value);
         });
         form.querySelectorAll('[name^="variables["]').forEach((el) => { if (keep(el)) body.append(el.name, el.value); });
-        ['_csrf_token', 'site'].forEach((name) => {
-            const field = form.querySelector(`[name="${name}"]`);
-            if (field) body.append(name, field.value);
-        });
+        this.editorFields(body);
         body.append('snippet_tag', index ?? '0');
         const label = this.buttonTarget.textContent;
         this.buttonTarget.disabled = true;
@@ -85,6 +95,10 @@ export default class extends Controller {
         }));
         this.attentionTarget.closest('[data-attention-box]').hidden = !(answer.attention || []).length;
         this.staleTarget.hidden = true;
+        this.tag = answer.tag || '';
+        this.shareButtonTarget.hidden = snippet === '' || this.tag === '';
+        this.shareLinkBoxTarget.hidden = true;
+        this.showSharing(answer.shared_until || null, '');
         this.panelTarget.hidden = false;
         this.buttonTarget.setAttribute('aria-expanded', 'true');
         this.headingTarget.focus();
@@ -116,5 +130,54 @@ export default class extends Controller {
         this.copyTarget.textContent = label;
         clearTimeout(this.timer);
         this.timer = setTimeout(() => { this.copyTarget.textContent = original; this.liveTarget.textContent = ''; }, 3000);
+    }
+
+    showSharing(until, message) {
+        const date = until ? new Date(until).toLocaleString() : '';
+        this.shareStatusTarget.textContent = message || (until ? `Shared until ${date}.` : '');
+        this.stopButtonTarget.hidden = !until;
+        this.sharingTarget.hidden = !until && !message;
+    }
+
+    async post(url) {
+        const body = this.editorFields(new FormData());
+        body.append('tag', this.tag || '');
+        try {
+            const response = await fetch(url, { method: 'POST', body, credentials: 'same-origin', headers: { Accept: 'application/json' } });
+            return await response.json();
+        } catch (e) {
+            return { error: 'That didn\'t work. Reload the page and try again.' };
+        }
+    }
+
+    async share() {
+        this.shareButtonTarget.disabled = true;
+        const answer = await this.post(this.shareUrlValue);
+        this.shareButtonTarget.disabled = false;
+        if (answer.error) return this.showSharing(null, answer.error);
+        this.shareLinkTarget.value = answer.url;
+        this.shareLinkBoxTarget.hidden = false;
+        this.showSharing(answer.shared_until, answer.message);
+        this.stopButtonTarget.hidden = false;
+        this.shareLinkTarget.focus();
+        this.shareLinkTarget.select();
+    }
+
+    async stopSharing() {
+        const answer = await this.post(this.stopUrlValue);
+        this.shareLinkTarget.value = '';
+        this.shareLinkBoxTarget.hidden = true;
+        this.showSharing(null, answer.error || answer.message || '');
+        this.shareButtonTarget.focus();
+    }
+
+    async copyLink() {
+        try {
+            await navigator.clipboard.writeText(this.shareLinkTarget.value);
+            this.liveTarget.textContent = 'Link copied';
+        } catch (e) {
+            this.shareLinkTarget.select();
+            this.liveTarget.textContent = 'Copy didn\'t work. Press Ctrl+C to copy the selected link.';
+        }
     }
 }
