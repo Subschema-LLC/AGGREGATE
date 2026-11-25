@@ -67,4 +67,5 @@
 }
 
 .tag-settings .snippet-handoff-code { max-height: 20rem; overflow: auto; white-space: pre; }
+.tag-settings .snippet-handoff[hidden],
 .tag-settings .snippet-handoff-panel[hidden] { display: none; }
