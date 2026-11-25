@@ -515,7 +515,8 @@ finished. The test needs the tag manager page at edit level.
 
 ## Hand a tag to a developer
 
-On a Send an Aggregate event tag, **Get developer snippet** opens a panel
+On a Send an Aggregate event tag with a dataLayer event trigger, **Get
+developer snippet** opens a panel
 with a `dataLayer.push` for the tag as edited, without saving or sending
 anything. Each value read from a variable is a marked placeholder,
 `'<<REPLACE: key, type>>'`, named by its custom data key. Latest-value
