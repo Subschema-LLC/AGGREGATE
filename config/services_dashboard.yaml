@@ -18,6 +18,7 @@ services:
     App\Controller\SetupController: ~
     App\Controller\StandaloneConsentController: ~
     App\Controller\TagManagerController: ~
+    App\Delivery\Web\TagManager\BuildEventSnippetController: ~
     App\Controller\ConsentManagerController: ~
     App\Controller\BrowserAssetsController: ~
     App\Controller\DataLifecycleController: ~

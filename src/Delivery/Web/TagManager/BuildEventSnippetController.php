@@ -116,8 +116,10 @@ final class BuildEventSnippetController extends AbstractController
         return $response;
     }
 
-    private function failure(string $message, int $status = Response::HTTP_UNPROCESSABLE_ENTITY): Response
-    {
+    private function failure(
+        string $message,
+        int $status = Response::HTTP_UNPROCESSABLE_ENTITY,
+    ): Response {
         return $this->answer(['error' => $message], $status);
     }
 }

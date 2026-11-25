@@ -42,6 +42,10 @@ tag_manager_controller:
     resource: ../src/Controller/TagManagerController.php
     type: attribute
 
+build_event_snippet_controller:
+    resource: ../src/Delivery/Web/TagManager/BuildEventSnippetController.php
+    type: attribute
+
 consent_manager_controller:
     resource: ../src/Controller/ConsentManagerController.php
     type: attribute
