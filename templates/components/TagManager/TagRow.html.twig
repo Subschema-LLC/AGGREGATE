@@ -279,6 +279,22 @@ tag.emit('newsletter_signup', {plan: tag.get('plan')});" data-components--tag-ma
             <div role="status" aria-live="polite" data-components--tag-manager--tag-row-target="previewResult"></div>
         </details>
         {% endif %}
+        <div class="snippet-handoff mb-3" data-snippet-handoff data-controller="components--tag-manager--snippet" data-components--tag-manager--snippet-url-value="{{ path('app_tag_manager_snippet') }}" data-action="keydown->components--tag-manager--snippet#escape"{% if tag.type != 'event' or tag.trigger.type != 'data_layer' %} hidden{% endif %}>
+            <button type="button" class="button is-small is-light" aria-expanded="false" aria-controls="tag-{{ index }}-snippet" data-components--tag-manager--snippet-target="button" data-action="components--tag-manager--snippet#toggle">Get developer snippet</button>
+            <div class="box is-shadowless snippet-handoff-panel mt-2" id="tag-{{ index }}-snippet" hidden data-components--tag-manager--snippet-target="panel">
+                <h4 class="title is-6" tabindex="-1" data-components--tag-manager--snippet-target="heading">Snippet for your developer</h4>
+                <p class="help">Ask your developer to add this where the page makes the event. Replace each marked value with the real value. Making this snippet saves and sends nothing.</p>
+                <p class="notification is-warning is-light py-2 mt-2" role="status" data-components--tag-manager--snippet-target="reason" hidden></p>
+                <pre class="snippet-handoff-code mt-2" tabindex="0" data-components--tag-manager--snippet-target="code" hidden></pre>
+                <div class="notification is-info is-light py-2 mt-2" data-attention-box hidden><p class="has-text-weight-semibold">Needs attention</p><ul data-components--tag-manager--snippet-target="attention"></ul></div>
+                <p class="help is-warning" data-components--tag-manager--snippet-target="stale" hidden>The tag changed. <button type="button" class="button is-small is-light" data-action="components--tag-manager--snippet#build">Refresh snippet</button></p>
+                <div class="buttons mt-2 mb-0">
+                    <button type="button" class="button is-small is-info" data-components--tag-manager--snippet-target="copy" data-action="components--tag-manager--snippet#copy" hidden>Copy snippet</button>
+                    <button type="button" class="button is-small is-light" data-action="components--tag-manager--snippet#close">Close</button>
+                </div>
+                <p class="is-sr-only" role="status" aria-live="polite" data-components--tag-manager--snippet-target="live"></p>
+            </div>
+        </div>
         {% if tag.added|default(false) %}<button type="button" class="button is-small is-light" data-action="pages--tag-manager--index#discardRow">Discard this new tag</button>{% endif %}
         {% if tag.id and not is_new %}<label class="checkbox"><input type="checkbox" name="tags[{{ index }}][remove]" value="1"{% if tag.remove|default(false) %} checked{% endif %}> Remove this tag when saving</label>{% endif %}
     </fieldset>
