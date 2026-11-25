@@ -1,4 +1,5 @@
-// "Get developer snippet" on a tag row: posts the row as edited to the server, which
+// "Get developer snippet" on a data-layer event tag row (Send an Aggregate event with a
+// dataLayer event trigger; hidden on any other row): posts the row as edited to the server, which
 // builds the dataLayer.push, and shows the snippet, the reason there is none and the
 // items needing attention. It parses no paths itself, so the dashboard and the command
 // line print the same text. Nothing is saved or sent. "Share link" makes a read-only
@@ -15,14 +16,31 @@ export default class extends Controller {
     connect() {
         this.row = this.element.closest('[data-tag-row]');
         this.markStale = () => { if (!this.panelTarget.hidden) this.staleTarget.hidden = false; };
+        this.syncVisibility = () => this.showForEventTags();
         this.row?.addEventListener('input', this.markStale);
         this.row?.addEventListener('change', this.markStale);
+        this.row?.addEventListener('change', this.syncVisibility);
         document.addEventListener('tag-manager:variables-changed', this.markStale);
+        this.showForEventTags();
+    }
+
+    // The snippet is a dataLayer.push, so only a Send an Aggregate event tag with a
+    // dataLayer event trigger offers it. Switching the row away closes an open panel.
+    showForEventTags() {
+        const type = this.row?.querySelector('[data-tag-type]')?.value;
+        const trigger = this.row?.querySelector('[data-tag-trigger]')?.value;
+        const offered = type === 'event' && trigger === 'data_layer';
+        this.element.hidden = !offered;
+        if (!offered && !this.panelTarget.hidden) {
+            this.panelTarget.hidden = true;
+            this.buttonTarget.setAttribute('aria-expanded', 'false');
+        }
     }
 
     disconnect() {
         this.row?.removeEventListener('input', this.markStale);
         this.row?.removeEventListener('change', this.markStale);
+        this.row?.removeEventListener('change', this.syncVisibility);
         document.removeEventListener('tag-manager:variables-changed', this.markStale);
     }
 

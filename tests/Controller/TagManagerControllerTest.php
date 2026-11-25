@@ -631,6 +631,12 @@ final class TagManagerControllerTest extends TestCase
         $page = $this->view($save, ['site' => $this->siteId]);
         $handoff = $page->filter('#tag-2-snippet')->closest('[data-snippet-handoff]');
         self::assertSame('Get developer snippet', trim($handoff->filter('button')->first()->text()));
+        self::assertNull($handoff->attr('hidden'), 'a data-layer event tag offers the snippet');
+        foreach ([0 => 'script', 1 => 'call'] as $row => $type) {
+            $other = $page->filter('#tag-'.$row.'-snippet')->closest('[data-snippet-handoff]');
+            self::assertSame($type, $page->filter('#tag-'.$row.'-type option[selected]')->attr('value'));
+            self::assertNotNull($other->attr('hidden'), 'a '.$type.' tag does not offer the snippet');
+        }
         self::assertSame(
             '/dashboard/tag-manager/snippet',
             $handoff->attr('data-components--tag-manager--snippet-url-value'),

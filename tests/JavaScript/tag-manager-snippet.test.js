@@ -32,7 +32,7 @@ function field(name, value, extra = {}) {
   return Object.assign({name, value, type: 'text', disabled: false, checked: false}, extra);
 }
 
-function setup({answers = {}, clipboardFails = false, rowFields, variables} = {}) {
+function setup({answers = {}, clipboardFails = false, rowFields, variables, type = 'event', trigger = 'data_layer'} = {}) {
   const requests = [];
   const documentListeners = {};
   const rowFieldsList = rowFields ?? [
@@ -42,7 +42,8 @@ function setup({answers = {}, clipboardFails = false, rowFields, variables} = {}
     field('tags[3][consent]', 'analytics', {disabled: true}),
   ];
   const variableFields = variables ?? [field('variables[0][alias]', 'plan'), field('variables[0][path]', 'signup.plan')];
-  const row = element({querySelectorAll: () => rowFieldsList});
+  const selects = {'[data-tag-type]': field('tags[3][type]', type), '[data-tag-trigger]': field('tags[3][trigger][type]', trigger)};
+  const row = element({querySelectorAll: () => rowFieldsList, querySelector: (selector) => selects[selector] ?? null});
   const form = element({
     querySelector: (selector) => ({
       '[name="_csrf_token"]': field('_csrf_token', 'token-1'),
@@ -85,15 +86,16 @@ function setup({answers = {}, clipboardFails = false, rowFields, variables} = {}
     },
   };
   const Snippet = vm.runInNewContext(source.replace(/^import .*;\n/m, '').replace('export default class', 'class Snippet') + '\nSnippet;', context);
+  const handoff = {hidden: false, closest: (selector) => (selector === '[data-tag-row]' ? row : form)};
   const controller = Object.assign(new Snippet(), {
-    element: {closest: (selector) => (selector === '[data-tag-row]' ? row : form)},
+    element: handoff,
     urlValue: '/dashboard/tag-manager/snippet',
     shareUrlValue: '/dashboard/tag-manager/snippet/share',
     stopUrlValue: '/dashboard/tag-manager/snippet/share/stop',
   });
   for (const [name, target] of Object.entries(targets)) controller[`${name}Target`] = target;
   controller.connect();
-  return {controller, targets, requests, row, attentionBox, clipboard, documentListeners};
+  return {controller, targets, requests, row, attentionBox, clipboard, documentListeners, selects, handoff};
 }
 
 const built = {
@@ -282,4 +284,33 @@ test('copying the snippet and the link announces the result', async () => {
   await blocked.controller.copyLink();
   assert.equal(blocked.targets.shareLink.selected, 1);
   assert.match(blocked.targets.live.textContent, /Press Ctrl\+C to copy the selected link/);
+});
+
+test('only a Send an Aggregate event tag with a dataLayer event trigger offers the snippet', () => {
+  assert.equal(setup().handoff.hidden, false);
+  for (const [type, trigger] of [['script', 'data_layer'], ['call', 'data_layer'], ['custom', 'data_layer'], ['event', 'dom_ready'], ['event', 'window_event']]) {
+    assert.equal(setup({type, trigger}).handoff.hidden, true, `${type} on ${trigger}`);
+  }
+});
+
+test('switching the row away hides the button and closes an open panel; switching back shows it', async () => {
+  const {controller, targets, row, selects, handoff} = setup({answers: {'/dashboard/tag-manager/snippet': built}});
+  await controller.toggle();
+  assert.equal(targets.panel.hidden, false);
+
+  selects['[data-tag-trigger]'].value = 'document_event';
+  row.dispatch('change');
+  assert.equal(handoff.hidden, true);
+  assert.equal(targets.panel.hidden, true);
+  assert.equal(targets.button.getAttribute('aria-expanded'), 'false');
+
+  selects['[data-tag-trigger]'].value = 'data_layer';
+  selects['[data-tag-type]'].value = 'script';
+  row.dispatch('change');
+  assert.equal(handoff.hidden, true);
+
+  selects['[data-tag-type]'].value = 'event';
+  row.dispatch('change');
+  assert.equal(handoff.hidden, false);
+  assert.equal(targets.panel.hidden, true, 'it opens only when asked');
 });
