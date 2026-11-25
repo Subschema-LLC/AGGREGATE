@@ -68,7 +68,8 @@ final class BuildEventSnippetController
             throw new AccessDeniedException('Choose a website you can use.');
         }
         $csrf = $submitted['_csrf_token'] ?? null;
-        if (!is_string($csrf) || !$this->csrf->isTokenValid(new CsrfToken(self::CSRF_TOKEN_ID, $csrf))) {
+        $token = new CsrfToken(self::CSRF_TOKEN_ID, is_string($csrf) ? $csrf : '');
+        if (!is_string($csrf) || !$this->csrf->isTokenValid($token)) {
             return $this->failure(
                 'Invalid security token. Reload the page and try again.',
                 Response::HTTP_FORBIDDEN,
