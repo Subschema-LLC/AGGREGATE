@@ -123,6 +123,6 @@ _By Frontend (claude-haiku-5-5)._
 - [x] Developer: share link, with expiry, stop and the General settings lifetime (done in JOIN-70)
 - [x] Developer: no-variable fallback to the property table (done in JOIN-70)
 - [x] Developer: tests for the route body and `SnippetCommand` (done in JOIN-70)
-- [ ] Developer: tests for the panel JavaScript (snippet_controller.js), including the share and stop-sharing states
+- [x] Developer: tests for the panel JavaScript (snippet_controller.js), including the share and stop-sharing states (done in JOIN-70)
 
 _By Product Owner (claude-haiku-5-5)._
