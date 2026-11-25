@@ -911,6 +911,7 @@ final class TagManagerControllerTest extends TestCase
                 'app_tag_manager' => '/dashboard/tag-manager',
                 'app_tag_manager_save' => '/dashboard/tag-manager/save',
                 'app_tag_manager_download' => '/dashboard/tag-manager/download',
+                'app_tag_manager_snippet' => '/dashboard/tag-manager/snippet',
                 'app_tag_manager_preview' => '/dashboard/tag-manager/preview',
                 'app_tag_manager_preview_script' => '/dashboard/tag-manager/preview/'.($parameters['token'] ?? '').'.js',
                 'app_setup' => '/dashboard/setup',
