@@ -55,7 +55,7 @@ final class SharedEventSnippetController
         $response = new Response($this->twig->render('tag_manager/shared_snippet.html.twig', [
             'snippet' => $snippet?->snippet,
             'reason' => $snippet?->reason,
-            'attention' => $snippet?->attention ?? [],
+            'attention' => $snippet === null ? [] : $snippet->attention,
             'open' => $opened !== null,
             'expires' => $opened['expires'] ?? null,
         ]), $opened === null ? Response::HTTP_NOT_FOUND : Response::HTTP_OK);
