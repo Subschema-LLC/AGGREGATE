@@ -17,8 +17,13 @@ The anchor docs/features/event-snippet-handoff.md stands. The approver has decid
 - Conflicting paths (for example a.b and a.b.c): both variables are named, and the rest of the push is still built.
 - Latest-value variables ({"$var"}): kept as a placeholder in the push, with the comment that they may already be on the page from an earlier push.
 
-**Open**
-- No-variable tags: the approver chose a property-table fallback. The anchor's "Done when" says tags with no properties show no button. These two conflict and the approver has not yet said which wins. Until then the no-variable behaviour is not in the acceptance criteria.
+- No-variable tags (decided by the approver, 2026-11-25): the property-table fallback wins over the anchor's "no button" line. When a tag reads no variables at all, the snippet names each of the tag's own customData properties, with each property name (from the tag's property table) as the placeholder label and the type taken from its fixed value, plus one "Needs attention" line saying the tag still sends its fixed values until each property gets a variable. A tag with no properties pushes only the event. Fixed values beside at least one variable are still left out.
+- Share-link storage (decided by the approver, 2026-11-25): YAML under config/, never the database. A link is kept as a SHA-256 hash of its token beside the tag's settings (`tag_snippet_shares` in the website's config/tag-manager/sites/<id>.yaml, or in config/aggregate.yaml for the shared configuration).
+- Share-link expiry (decided by the approver, 2026-11-25): links expire. `tag_snippet_share_days` (1 to 365, default 7) sets the lifetime for the whole installation on General settings, in config/aggregate.yaml, or with `app:config set general.tag_snippet_share_days`. Making a new link replaces the tag's old one, and "Stop sharing" closes it at once.
+- Parity (decided by the approver, 2026-11-25): the snippet routes are audited and mapped in SettingsParityTest to `app:tag-manager:snippet`, which has `--share` and `--stop-sharing`.
+
+**Anchor "Done when" (updated here)**
+docs/features/event-snippet-handoff.md is not in the repository, so its "Done when" is recorded here: done when a data-layer event tag shows "Get developer snippet"; a tag that reads no variables gets the property-table fallback described above instead of no button; the shared link is stored as a hash in YAML, expires after `tag_snippet_share_days` and can be stopped; and the dashboard and CLI give the same snippet and attention items.
 
 **Acceptance criteria (checkable without asking)**
 1. A data-layer event tag with included properties shows "Get developer snippet"; the snippet opens in a panel on the same row.
@@ -30,6 +35,9 @@ The anchor docs/features/event-snippet-handoff.md stands. The approver has decid
 7. A tag edited but not saved produces a snippet that reflects the edited row.
 8. The shared page is read-only, shows the saved tag only, and says so.
 9. The CLI prints the same snippet and the same attention items as the dashboard.
+10. A tag that reads no variables gets a snippet of its own properties named from the property table, with one attention item; a tag with no properties pushes only the event.
+11. A shared link opens for `tag_snippet_share_days` days, then shows "This link is not open"; "Stop sharing" closes it at once; only a hash of its token is stored.
+12. Every snippet route is audited and has a CLI equivalent in SettingsParityTest.
 
 **Out of scope for the MVP:** combined pushes across tags, and any in-app report.
 
@@ -108,12 +116,13 @@ _By Frontend (claude-haiku-5-5)._
 
 - [x] (done in JOIN-70) Architect: design the server route, DashboardPages entry (Tag manager level), SettingsParityTest handling and the CLI command, with the shared-message wording in one place.
 - [ ] UX/UI Designer: mockup for the error state (open with reason) and the share-link states; align the disabled state with the approver's decision.
-- [ ] Product Owner: confirm the no-variable rule once the anchor conflict is answered; keep the acceptance criteria current.
+- [x] (done in JOIN-70) Product Owner: confirm the no-variable rule once the anchor conflict is answered; keep the acceptance criteria current.
 - [x] (done in JOIN-70) Frontend Developer: rework the Test this tag reuse plan to the server-side design; drop the event_paths.js refactor unless the Architect keeps a client piece.
-- [ ] DBA: design where a share link is stored, consistent with the rule that the database holds no configuration.
+- [x] (done in JOIN-70) DBA: design where a share link is stored, consistent with the rule that the database holds no configuration (YAML beside the tag's settings, hash only).
 - [x] Developer: server snippet builder, route `POST /dashboard/tag-manager/snippet`, command `app:tag-manager:snippet`, button and panel (done in JOIN-70; CI green on 8775e52)
-- [ ] Developer: share link (waits on where the token is stored)
-- [ ] Developer: no-variable fallback to the property table (waits on the anchor conflict)
-- [ ] Developer: tests for the route body, `SnippetCommand` and the panel JavaScript
+- [x] Developer: share link, with expiry, stop and the General settings lifetime (done in JOIN-70)
+- [x] Developer: no-variable fallback to the property table (done in JOIN-70)
+- [x] Developer: tests for the route body and `SnippetCommand` (done in JOIN-70)
+- [ ] Developer: tests for the panel JavaScript (snippet_controller.js), including the share and stop-sharing states
 
 _By Product Owner (claude-haiku-5-5)._
