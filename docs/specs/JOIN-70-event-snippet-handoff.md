@@ -111,5 +111,9 @@ _By Frontend (claude-haiku-5-5)._
 - [ ] Product Owner: confirm the no-variable rule once the anchor conflict is answered; keep the acceptance criteria current.
 - [x] (done in JOIN-70) Frontend Developer: rework the Test this tag reuse plan to the server-side design; drop the event_paths.js refactor unless the Architect keeps a client piece.
 - [ ] DBA: design where a share link is stored, consistent with the rule that the database holds no configuration.
+- [x] Developer: server snippet builder, route `POST /dashboard/tag-manager/snippet`, command `app:tag-manager:snippet`, button and panel (done in JOIN-70; CI green on 8775e52)
+- [ ] Developer: share link (waits on where the token is stored)
+- [ ] Developer: no-variable fallback to the property table (waits on the anchor conflict)
+- [ ] Developer: tests for the route body, `SnippetCommand` and the panel JavaScript
 
 _By Product Owner (claude-haiku-5-5)._
