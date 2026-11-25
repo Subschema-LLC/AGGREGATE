@@ -17,6 +17,7 @@ services:
     App\Entities\TagManager\CustomDataProperties: '@App\Integrations\TagManager\CustomDataSettingsProperties'
     App\Entities\TagManager\CustomCodeSyntax: '@App\Integrations\TagManager\PeastCustomCodeSyntax'
     App\Entities\TagManager\TagManagers: '@App\Integrations\TagManager\YamlTagManagers'
+    App\Entities\TagManager\SnippetShares: '@App\Integrations\TagManager\YamlSnippetShares'
     App\Entities\Incident\DeliveryHistory: '@App\Integrations\Alerts\AuditDeliveryHistory'
     App\Entities\Incident\IncidentStates: '@App\Integrations\Alerts\TaskIncidentStates'
     App\Entities\TrafficClass\BotUserAgents: '@App\Integrations\TrafficRanges\BotDetectorUserAgents'
