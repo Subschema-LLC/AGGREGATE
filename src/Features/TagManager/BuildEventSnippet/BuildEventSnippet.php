@@ -41,7 +41,8 @@ final class BuildEventSnippet
 
         $attention = [];
         $places = $this->places($tag, $variables, $attention);
-        $attention = [...$attention, ...$this->dropConflicts($places)];
+        [$places, $conflicts] = (new ConflictingPaths())->split($places);
+        $attention = [...$attention, ...$conflicts];
         $tree = [];
         foreach ($places as $place) {
             $this->insert($tree, $place['segments'], [
@@ -110,40 +111,6 @@ final class BuildEventSnippet
         }
 
         return $places;
-    }
-
-    /**
-     * @param list<array{key: string, alias: string, path: string, segments: list<mixed>}> $places
-     * @return list<string>
-     */
-    private function dropConflicts(array &$places): array
-    {
-        $attention = [];
-        $drop = [];
-        foreach ($places as $i => $a) {
-            foreach ($places as $j => $b) {
-                if ($j <= $i) {
-                    continue;
-                }
-                $length = min(count($a['segments']), count($b['segments']));
-                $shared = array_slice($a['segments'], 0, $length);
-                if ($shared !== array_slice($b['segments'], 0, $length)) {
-                    continue;
-                }
-                $drop[$i] = $drop[$j] = true;
-                $attention[] = sprintf(
-                    'Variables `%s` (%s) and `%s` (%s) use the same place in the push, '
-                    .'so both are left out. The rest of the push is still built.',
-                    $a['alias'],
-                    $a['path'],
-                    $b['alias'],
-                    $b['path'],
-                );
-            }
-        }
-        $places = array_values(array_diff_key($places, $drop));
-
-        return $attention;
     }
 
     /** @param array<int|string, mixed> $tree @param list<int|string> $segments */
