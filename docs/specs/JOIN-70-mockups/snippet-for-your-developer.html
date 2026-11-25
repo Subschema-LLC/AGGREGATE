@@ -1,0 +1,43 @@
+<html><head><title>Snippet for your developer</title><style>
+body{font:15px/1.5 system-ui,sans-serif;margin:0;padding:20px;background:#f5f6f8;color:#1c2330}
+.row{background:#fff;border:1px solid #cfd5df;border-radius:8px;padding:14px;max-width:760px}
+.row h3{margin:0 0 8px;font-size:16px}
+.act button,.panel button{font:inherit;padding:6px 12px;border:1px solid #3b5bdb;background:#fff;color:#2b44a8;border-radius:6px;cursor:pointer}
+.act button.primary,.panel button.primary{background:#2b44a8;color:#fff}
+.act{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.hint{font-size:13px;color:#444}
+.panel{margin-top:12px;border-top:1px solid #cfd5df;padding-top:12px}
+.panel h4{margin:0 0 4px;font-size:16px}
+pre{background:#101828;color:#e6e9f0;padding:12px;border-radius:6px;overflow:auto;max-height:240px;font-size:13px;margin:10px 0}
+.ph{background:#fde68a;color:#1c2330;padding:0 2px;border-radius:3px}
+.cm{color:#9fb0c8}
+.attn{background:#fff4e5;border:1px solid #e0a040;border-radius:6px;padding:8px 12px;margin-top:10px}
+.attn h5{margin:0 0 4px;font-size:14px}
+.attn ul{margin:0;padding-left:18px}
+.stale{font-size:13px;margin-top:6px}
+</style></head><body>
+<div class="row">
+<h3>Purchase completed · Send an Aggregate event · trigger: data layer "purchase"</h3>
+<div class="act"><button>Test this tag</button><button aria-expanded="true">Get developer snippet</button></div>
+<div class="panel" role="region" aria-labelledby="h">
+<h4 id="h" tabindex="-1">Snippet for your developer</h4>
+<p class="hint">Ask your developer to add this where the page makes the event. Replace each marked value with the real value. Making this snippet saves and sends nothing. <a href="#">About the data layer</a></p>
+<pre tabindex="0"><span class="cm">// Aggregate tag: Purchase completed</span>
+window.dataLayer = window.dataLayer || [];
+window.dataLayer.push({
+  event: 'purchase',
+  ecommerce: {
+    transaction_id: <span class="ph">'&lt;&lt;REPLACE: order_id, text&gt;&gt;'</span>, <span class="cm">// customData.order_id: text up to 500 bytes</span>
+    value: <span class="ph">'&lt;&lt;REPLACE: order_value, number&gt;&gt;'</span>, <span class="cm">// customData.order_value: a number</span>
+    items: [{ sku: <span class="ph">'&lt;&lt;REPLACE: first_sku, text&gt;&gt;'</span> }] <span class="cm">// customData.first_sku: text</span>
+  },
+  user_role: <span class="ph">'&lt;&lt;REPLACE: user_role, text&gt;&gt;'</span> <span class="cm">// may already be on the page from an earlier push</span>
+});</pre>
+<div class="act"><button class="primary">Copy snippet</button><button>Share link</button><button>Close</button><span role="status" class="hint">Snippet copied</span></div>
+<div class="attn"><h5>Needs attention</h5><ul>
+<li>Variable <b>plan</b> reads <code>event.detail.plan</code>. The event key must stay the event name, so this value is left out. Read it from another path.</li>
+<li>Variables <b>coupon</b> (<code>promo</code>) and <b>coupon_code</b> (<code>promo.code</code>) need different shapes at <code>promo</code>. Both are left out.</li></ul></div>
+<p class="stale">The tag changed. <button>Refresh snippet</button></p>
+</div></div>
+<p class="hint" style="margin-top:16px">Disabled state: <button disabled>Get developer snippet</button> <span>Add an event name to the trigger first.</span></p>
+</body></html>
