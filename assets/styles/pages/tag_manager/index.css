@@ -65,3 +65,7 @@
     .tag-settings .label-with-tooltip .tooltip-bubble { left: 0; max-width: none; right: 0; width: auto; }
     .tag-settings .label-with-tooltip .tooltip-bubble::after { display: none; }
 }
+
+.tag-settings .snippet-handoff-code { max-height: 20rem; overflow: auto; white-space: pre; }
+.tag-settings .snippet-handoff[hidden],
+.tag-settings .snippet-handoff-panel[hidden] { display: none; }

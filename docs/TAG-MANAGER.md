@@ -513,6 +513,43 @@ is loaded, sent or saved. Custom JavaScript does not run in the test; the result
 shows only whether it would. A tag set to run after another assumes that one has
 finished. The test needs the tag manager page at edit level.
 
+## Hand a tag to a developer
+
+On a Send an Aggregate event tag with a dataLayer event trigger, **Get
+developer snippet** opens a panel
+with a `dataLayer.push` for the tag as edited, without saving or sending
+anything. Each value read from a variable is a marked placeholder,
+`'<<REPLACE: key, type>>'`, named by its custom data key. Latest-value
+variables are placeholders too, with a note that they may already be on the
+page. A variable that reads through `event` is left out and listed under
+**Needs attention**, as are conflicting paths (both variables are named; the
+rest is still built). If there is no snippet, the panel gives the reason.
+
+A tag that reads no variables still gets a snippet: each of its own custom
+data properties becomes a placeholder named from the property table, typed
+from its fixed value, with a note under **Needs attention** that the tag keeps
+sending its fixed values until each property has a variable with the path
+shown. A tag with no properties pushes only the event. Fixed values beside
+variables are never asked of the developer.
+
+**Share link** makes a read-only page of the saved tag's snippet for a
+developer without a dashboard sign-in. Anyone with the link can read it, so
+the panel says so and offers **Stop sharing**, which closes it at once. Making
+a new link stops the old one. Links last `tag_snippet_share_days` days (1 to
+365, default 7), set for the whole installation on General settings, in
+`config/aggregate.yaml` or with
+`php bin/console app:config set general.tag_snippet_share_days 14`. Only a
+SHA-256 hash of each link is kept, as `tag_snippet_shares` beside the tag's
+settings (the website's `config/tag-manager/sites/<id>.yaml`, or
+`config/aggregate.yaml` for the shared configuration). A removed tag's link
+stops opening. The page is `noindex` and not cached.
+
+The command line does the same for a saved tag:
+
+```
+php bin/console app:tag-manager:snippet <tag> [--site=ID] [--share] [--stop-sharing]
+```
+
 ## Trigger and browser-event dictionary
 
 | YAML trigger | Browser equivalent | When it runs |

@@ -2,6 +2,7 @@
 
 namespace App\Controller;
 
+use App\Entities\TagManager\SnippetShare;
 use App\Service\AggregateConfigLoader;
 use App\Service\BrowserScriptCache;
 use App\Service\CollectionAddress;
@@ -57,6 +58,7 @@ class ApplicationSettingsController extends AbstractController
             'rate_limit' => $this->config->getWithEnvFallback('rate_limit_per_minute', 100),
             'website_activity_active_days' => (int) $this->config->getWithEnvFallback('website_activity_active_days', 1),
             'website_activity_stale_days' => (int) $this->config->getWithEnvFallback('website_activity_stale_days', 3),
+            'tag_snippet_share_days' => (int) $this->config->get(SnippetShare::SETTING, SnippetShare::DEFAULT_DAYS),
             'documentation_url' => $documentation->configuredValue(),
             'documentation_url_overridden' => $documentation->hasEnvironmentOverride(),
             'documentation_default_url' => DocumentationLinks::DEFAULT_URL,

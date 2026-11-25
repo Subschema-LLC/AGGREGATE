@@ -50,7 +50,7 @@
 {% endif %}
 
 {% if websites is not empty %}
-    <div class="box mb-5">
+    <div class="box mb-5" data-controller="pages--websites--install-option" data-pages--websites--install-option-format-value="{{ snippet_format }}" data-pages--websites--install-option-tags-value="{{ include_tags ? 'true' : 'false' }}" data-pages--websites--install-option-cmp-value="{{ include_cmp ? 'true' : 'false' }}">
         <div class="columns">
             <div class="column">
                 <h2 class="title is-5 mb-3" id="website-installation-method">Installation method</h2>
