@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace App\Delivery\Web\TagManager;
 
-use App\Controller\DashboardAccess;
 use App\Features\TagManager\BuildEventSnippet\BuildEventSnippet;
+use App\Security\Access\DashboardAccessVoter;
+use App\Security\Access\WebsiteAccess;
 use App\Service\AggregateConfigLoader;
 use App\Service\SiteScriptConfig;
 use App\Service\TagManagerForm;
@@ -23,12 +24,11 @@ use Symfony\Component\Routing\Annotation\Route;
  */
 final class BuildEventSnippetController extends AbstractController
 {
-    use DashboardAccess;
-
     public const CSRF_TOKEN_ID = 'tag_manager_settings';
 
     public function __construct(
         private readonly AggregateConfigLoader $config,
+        private readonly WebsiteAccess $access,
         private readonly TagManagerSettings $settings,
         private readonly SiteScriptConfig $sites,
         private readonly BuildEventSnippet $builder,
@@ -42,13 +42,22 @@ final class BuildEventSnippetController extends AbstractController
     )]
     public function __invoke(Request $request): Response
     {
-        $this->denyUnlessPermitted();
+        if (!$this->config->isDashboardEnabled()) {
+            throw $this->createNotFoundException('Dashboard is disabled.');
+        }
+        $this->denyAccessUnlessGranted(
+            DashboardAccessVoter::ROUTE,
+            $request,
+            'You do not have access to this page. Ask an administrator if you need it.',
+        );
         $submitted = $request->request->all();
         $siteId = $submitted['site'] ?? '';
         if (!is_string($siteId)) {
             return $this->failure('Choose a registered website.');
         }
-        $usable = $siteId === '' ? $this->canUseEveryWebsite() : $this->canUseSiteId($siteId);
+        $usable = $siteId === ''
+            ? $this->access->allowsEveryWebsite()
+            : $this->access->allowsSiteId($siteId);
         if (!$usable) {
             throw $this->createAccessDeniedException('Choose a website you can use.');
         }
