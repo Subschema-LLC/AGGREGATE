@@ -10,7 +10,9 @@ namespace App\Features\TagManager\BuildEventSnippet;
  *
  * Each customData value that reads a variable becomes a marked placeholder at the
  * variable's path, labelled by the customData key. Fixed values are left out: the
- * tag sets them itself. A path through `event` and paths that share a place are
+ * tag sets them itself. A tag with no variables falls back to its property table:
+ * each property is a placeholder named by its key, with a note that the tag still
+ * sends its fixed values. A path through `event` and paths that share a place are
  * named under attention and left out; the rest of the push is still built.
  * Nothing is saved or sent.
  */
@@ -40,11 +42,14 @@ final class BuildEventSnippet
 
         $attention = [];
         $places = $this->places($tag, $variables, $attention);
-        $attention = [...$attention, ...$this->dropConflicts($places)];
+        if ($places === [] && $attention === []) {
+            [$places, $attention] = $this->propertyTable($tag);
+        }
+        [$places, $conflicts] = (new ConflictingPaths())->split($places);
         $tree = new PlaceholderTree();
         foreach ($places as $place) {
-            $type = $types[$place['key']] ?? self::DEFAULT_TYPE;
-            $tree->add($place['segments'], $place['key'], $type);
+            $type = $types[$place['key']] ?? $place['type'] ?? self::DEFAULT_TYPE;
+            $tree->add($place['segments'], $place['key'], $type, $place['latest']);
         }
         $lines = [
             '// Add this where the page makes the event. Replace each marked value.',
@@ -55,7 +60,7 @@ final class BuildEventSnippet
             '});',
         ];
 
-        return new EventSnippet(implode("\n", $lines)."\n", null, $attention);
+        return new EventSnippet(implode("\n", $lines)."\n", null, [...$attention, ...$conflicts]);
     }
 
     private function reason(string $reason): EventSnippet
@@ -65,7 +70,8 @@ final class BuildEventSnippet
 
     /**
      * @param list<string> $attention
-     * @return list<array{key: string, alias: string, path: string, segments: list<mixed>}>
+     * @return list<array{key: string, alias: string, path: string,
+     *     segments: list<int|string>, latest: bool}>
      */
     private function places(array $tag, array $variables, array &$attention): array
     {
@@ -91,7 +97,7 @@ final class BuildEventSnippet
                 static fn (string $s): int|string => ctype_digit($s) ? (int) $s : $s,
                 $found[0],
             );
-            if (($segments[0] ?? null) === 'event' || ($value['from'] ?? null) === 'event') {
+            if (($segments[0] ?? null) === 'event') {
                 $attention[] = sprintf(
                     'Variable `%s` reads `%s`. The event key must stay the event name, '
                     .'so this value is left out. Read it from another path.',
@@ -100,9 +106,11 @@ final class BuildEventSnippet
                 );
                 continue;
             }
+            // "This event's value" reads the push itself; "latest value" may come
+            // from an earlier push, which its comment says.
             $places[] = [
                 'key' => (string) $key, 'alias' => $alias, 'path' => $path,
-                'segments' => $segments,
+                'segments' => $segments, 'latest' => ($value['from'] ?? null) !== 'event',
             ];
         }
 
@@ -110,37 +118,40 @@ final class BuildEventSnippet
     }
 
     /**
-     * @param list<array{key: string, alias: string, path: string,
-     *     segments: list<int|string>}> $places
-     * @return list<string>
+     * The fallback for a tag with no variables: each property in its table is a
+     * placeholder at its key read as a path (a dotted key nests), named by the key
+     * and typed by its fixed value.
+     *
+     * @return array{0: list<array<string, mixed>>, 1: list<string>}
      */
-    private function dropConflicts(array &$places): array
+    private function propertyTable(array $tag): array
     {
-        $attention = [];
-        $drop = [];
-        foreach ($places as $i => $a) {
-            foreach ($places as $j => $b) {
-                if ($j <= $i) {
-                    continue;
-                }
-                $length = min(count($a['segments']), count($b['segments']));
-                $shared = array_slice($a['segments'], 0, $length);
-                if ($shared !== array_slice($b['segments'], 0, $length)) {
-                    continue;
-                }
-                $drop[$i] = $drop[$j] = true;
-                $attention[] = sprintf(
-                    'Variables `%s` (%s) and `%s` (%s) use the same place in the push, '
-                    .'so both are left out. The rest of the push is still built.',
-                    $a['alias'],
-                    $a['path'],
-                    $b['alias'],
-                    $b['path'],
-                );
-            }
+        $data = $tag['event']['customData'] ?? [];
+        $places = [];
+        foreach (is_array($data) ? $data : [] as $key => $value) {
+            $key = (string) $key;
+            $places[] = [
+                'key' => $key, 'alias' => $key, 'path' => $key, 'latest' => false,
+                'segments' => array_map(
+                    static fn (string $s): int|string => ctype_digit($s) ? (int) $s : $s,
+                    explode('.', $key),
+                ),
+                'type' => match (true) {
+                    is_bool($value) => 'true or false',
+                    is_int($value), is_float($value) => 'a number',
+                    is_string($value) => 'text',
+                    default => self::DEFAULT_TYPE,
+                },
+            ];
         }
-        $places = array_values(array_diff_key($places, $drop));
+        if ($places === []) {
+            return [[], []];
+        }
 
-        return $attention;
+        return [$places, [
+            'This tag reads no variables, so the snippet names its properties as an example. '
+            .'The tag still sends its fixed values; to send what the page pushes, give each '
+            .'property a variable with the path shown.',
+        ]];
     }
 }

@@ -83,11 +83,66 @@ final class BuildEventSnippetTest extends TestCase
         self::assertSame('Add an event name to the trigger first.', $result->reason);
     }
 
-    public function testTagWithoutVariablesPushesOnlyTheEvent(): void
+    public function testThisEventsValueIsAPlaceholderWithoutTheEarlierPushNote(): void
     {
-        $result = (new BuildEventSnippet())->build($this->tag(['method' => 'card']), []);
+        $result = (new BuildEventSnippet())->build(
+            $this->tag(['role' => ['$var' => 'r', 'from' => 'event']]),
+            ['r' => 'user.role'],
+        );
+
+        self::assertSame([], $result->attention);
+        self::assertStringContainsString(
+            "role: '<<REPLACE: role, text, a number, true or false>>', "
+            ."// text, a number, true or false\n",
+            (string) $result->snippet,
+        );
+        self::assertStringNotContainsString('earlier push', (string) $result->snippet);
+    }
+
+    public function testTagWithoutVariablesFallsBackToItsPropertyTable(): void
+    {
+        $result = (new BuildEventSnippet())->build(
+            $this->tag(['method' => 'card', 'total' => 12, 'order.paid' => true, 'plan-type' => 'a']),
+            [],
+        );
+        $snippet = (string) $result->snippet;
+
+        self::assertStringContainsString("event: 'purchase',", $snippet);
+        self::assertStringContainsString("method: '<<REPLACE: method, text>>', // text\n", $snippet);
+        self::assertStringContainsString("total: '<<REPLACE: total, a number>>'", $snippet);
+        self::assertStringContainsString("  order: {\n    paid: '<<REPLACE: order.paid, true or false>>'", $snippet);
+        self::assertStringContainsString("'plan-type': '<<REPLACE: plan-type, text>>'", $snippet);
+        self::assertStringNotContainsString('earlier push', $snippet);
+        self::assertCount(1, $result->attention);
+        self::assertStringContainsString('still sends its fixed values', $result->attention[0]);
+    }
+
+    public function testTagWithoutPropertiesPushesOnlyTheEvent(): void
+    {
+        $result = (new BuildEventSnippet())->build($this->tag([]), []);
 
         self::assertStringNotContainsString('REPLACE', (string) $result->snippet);
         self::assertStringContainsString("event: 'purchase',", (string) $result->snippet);
+        self::assertSame([], $result->attention);
+    }
+
+    public function testFixedValuesBesideAVariableAreNotAskedOf(): void
+    {
+        $result = (new BuildEventSnippet())->build(
+            $this->tag(['plan' => ['$var' => 'p'], 'method' => 'card']),
+            ['p' => 'plan'],
+        );
+
+        self::assertStringNotContainsString('method', (string) $result->snippet);
+        self::assertSame([], $result->attention);
+    }
+
+    public function testUndefinedVariableIsReportedWithoutTheFallback(): void
+    {
+        $result = (new BuildEventSnippet())->build($this->tag(['plan' => ['$var' => 'missing']]), []);
+
+        self::assertCount(1, $result->attention);
+        self::assertStringContainsString('`missing` is not defined', $result->attention[0]);
+        self::assertStringNotContainsString('REPLACE', (string) $result->snippet);
     }
 }
