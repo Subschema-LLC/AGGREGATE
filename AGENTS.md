@@ -206,8 +206,9 @@ too far.
   helpers rather than listing every website. See
   [users and permissions](docs/USERS-AND-PERMISSIONS.md).
 - **Support white labeling.** Use the existing branding and navigation helpers
-  for names, logos, colors, typography, and presentation. Avoid hardcoded vendor
-  identity in ordinary product UI. Preserve accessible contrast, keyboard use,
+  for names, logos, colors, typography, and presentation, and follow the
+  [design system rules](#design-system-alias-by-subschema). Avoid hardcoded
+  vendor identity in ordinary product UI. Preserve accessible contrast, keyboard use,
   license notices, and the correct identity of update sources and trust keys.
 - **Keep deployment portable.** Preserve support for PostgreSQL, MySQL, MariaDB,
   SQL Server, and SQLite at their documented versions. Use portable Doctrine
@@ -235,6 +236,56 @@ group. The deployment YAML remains the base, a group replaces the keys it
 sets, and a website replaces those keys again. Reporting views stay on the
 deployment model until columns are published. See
 [website groups](docs/CONFIGURATION.md#website-groups).
+
+## Design system: ALIAS by Subschema
+
+Aggregate's dashboard is moving to ALIAS by Subschema, Subschema's white-label
+design system: <https://github.com/Subschema-LLC/ALIASbySubschema>. ALIAS turns
+a brand kit (a few colors, fonts, radius, density) into a full theme of plain
+CSS custom properties named `--ui-*`, contrast-checked in light, dark and
+high-contrast modes. Read its `README.md` and `AGENTS.md` before UI work. Its
+`themes/aggregate.yaml` carries over the current defaults, so an existing
+installation looks the same after the move.
+
+Today the brand engine is still `App\Service\BrandingTheme` with
+`templates/branding/theme.css.twig`, which emits `--app-brand-*` properties.
+It stays the single source of brand values until the move lands, as its own
+change that ports it to ALIAS. Until then:
+
+- Don't use `--ui-*` tokens here. They are undefined until an ALIAS theme
+  loads, and ALIAS treats an undefined `--ui-*` token as a failure.
+- Style with the existing `--app-brand-*` properties and Bulma's variables;
+  don't add new raw colors to stylesheets.
+- A new brand setting needs a matching key in ALIAS's brand kit
+  (`src/Entities/BrandKit/BrandKitSettings.php` there), so the move stays one
+  to one. Say so in the pull request if it can't have one.
+
+Rules for every UI change, now and after the move:
+
+1. **Bulma, plain CSS, no build step.** Bulma stays because it is pure CSS.
+   No Sass, PostCSS, bundler or second CSS framework.
+2. **Roles, never raw colors.** After the move, style with roles such as
+   `var(--ui-text)`, `var(--ui-primary)` with `var(--ui-on-primary)`, and
+   `var(--ui-danger-text)` on `var(--ui-danger-subtle)`. The `--ui-` prefix is
+   neutral on purpose: no product or client name in a token.
+3. **Never ship an unchecked color.** A kit must pass
+   `php alias.php check <kit>.yaml` in the ALIAS repository. A failing color is
+   moved along its own lightness, not swapped for a neutral default (ALIAS's
+   `docs/decisions/SolveDontSwap.md`).
+4. **Brands live in kits, not in code.** Subschema's own look is ALIAS's
+   `themes/subschema.yaml` (ink nav `#171B1F`, soft pink `#E8A8B4` active
+   items, crimson primary); Aggregate's default is `themes/aggregate.yaml`.
+5. **Secondary buttons are outlined** (`button ui-secondary` after the move).
+   The plain link style is a kit setting (`secondary_button: link`), not a
+   per-page choice.
+6. **Fonts come from the brand's font stacks** (system stacks by default).
+   Don't add Inter, JetBrains Mono or any hosted web font.
+7. **Icons will be self-hosted inline SVG,** from the one set the Subschema
+   apps will share (not in ALIAS yet). Today the dashboard loads Font Awesome
+   from a CDN in `templates/base.html.twig`; until the shared set replaces it,
+   use those icons and don't add another icon library or CDN.
+8. **Fix ALIAS in ALIAS.** If a component needs a token or bridge rule ALIAS
+   doesn't have, add it there rather than overriding tokens here.
 
 ## Privacy is an implementation constraint
 
