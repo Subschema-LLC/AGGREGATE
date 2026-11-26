@@ -6087,16 +6087,16 @@
         },
         {
             "name": "symfony/rate-limiter",
-            "version": "v7.4.23",
+            "version": "v7.4.24",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/rate-limiter.git",
-                "reference": "a65b8280000598b80b4456004280a56fdad011b3"
+                "reference": "363f4fe1491bb2757405f4ad555457298e84c1dd"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/rate-limiter/zipball/a65b8280000598b80b4456004280a56fdad011b3",
-                "reference": "a65b8280000598b80b4456004280a56fdad011b3",
+                "url": "https://api.github.com/repos/symfony/rate-limiter/zipball/363f4fe1491bb2757405f4ad555457298e84c1dd",
+                "reference": "363f4fe1491bb2757405f4ad555457298e84c1dd",
                 "shasum": ""
             },
             "require": {
@@ -6137,7 +6137,7 @@
                 "rate-limiter"
             ],
             "support": {
-                "source": "https://github.com/symfony/rate-limiter/tree/v7.4.23"
+                "source": "https://github.com/symfony/rate-limiter/tree/v7.4.24"
             },
             "funding": [
                 {
@@ -6157,7 +6157,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-11-01T19:17:22+00:00"
+            "time": "2026-11-10T01:07:41+00:00"
         },
         {
             "name": "symfony/resend-mailer",
@@ -11086,5 +11086,5 @@
     "platform-overrides": {
         "php": "8.2.0"
     },
-    "plugin-api-version": "2.6.0"
+    "plugin-api-version": "2.9.0"
 }
