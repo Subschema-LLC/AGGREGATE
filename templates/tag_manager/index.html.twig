@@ -158,8 +158,8 @@
                     </div>
                     {# A blank row the page copies for "Add another variable"; __INDEX__ becomes the next row number. #}
                     <template data-pages--tag-manager--index-target="variableTemplate">{{ component('TagManager:VariableRow', {index: '__INDEX__', variable: {alias: '', path: ''}, added: true}) }}</template>
-                    <div class="buttons mb-2">
-                        <button type="button" class="button is-small" data-pages--tag-manager--index-target="addVariableButton" data-action="pages--tag-manager--index#addVariableRow"{% if variable_rows|length >= max_variables %} disabled{% endif %}>
+                    <div class="buttons tag-rows-actions mb-2">
+                        <button type="button" class="button is-small is-primary is-outlined" data-pages--tag-manager--index-target="addVariableButton" data-action="pages--tag-manager--index#addVariableRow"{% if variable_rows|length >= max_variables %} disabled{% endif %}>
                             <span class="icon is-small"><i class="fas fa-plus" aria-hidden="true"></i></span>
                             <span>Add another variable</span>
                         </button>
@@ -177,8 +177,8 @@
                 </div>
                 {# A blank tag the page copies for "Add another tag"; __INDEX__ becomes the next row number. #}
                 <template data-pages--tag-manager--index-target="tagTemplate">{{ component('TagManager:TagRow', {index: '__INDEX__', tag: {id: '', src: '', type: 'script', enabled: true, consent: 'analytics', trigger: {type: 'dom_ready'}, is_new: true, added: true}, script_suggestions: suggest_tracker, custom_scripts_enabled: custom_scripts_enabled, custom_templates: custom_templates, tag_ids: tag_ids, tracker_namespaces: tracker_namespaces, preview_url: preview_url, worker_url: worker_url, preview_base: preview_base}) }}</template>
-                <div class="buttons mb-2">
-                    <button type="button" class="button" data-pages--tag-manager--index-target="addTagButton" data-action="pages--tag-manager--index#addTagRow"{% if rows|length >= max_tags %} disabled{% endif %}>
+                <div class="buttons tag-rows-actions mb-2">
+                    <button type="button" class="button is-primary is-outlined" data-pages--tag-manager--index-target="addTagButton" data-action="pages--tag-manager--index#addTagRow"{% if rows|length >= max_tags %} disabled{% endif %}>
                         <span class="icon is-small"><i class="fas fa-plus" aria-hidden="true"></i></span>
                         <span>Add another tag</span>
                     </button>
